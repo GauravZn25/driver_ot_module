@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Driver OT & Allowance Module — Rodic</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+:root{
+  --org:#E8590C;--org2:#C44A08;--orgl:#FFF3ED;--orgm:#FDDBC8;
+  --navy:#0A1628;--white:#FFFFFF;--bg:#F2F4F7;--border:#E4E7EC;
+  --text:#101828;--sub:#667085;--green:#12B76A;--greenl:#ECFDF3;
+  --amber:#F79009;--amberl:#FFFAEB;--blue:#1565C0;--bluel:#EFF8FF;
+  --purple:#7C3AED;--purplel:#F5F3FF;
+  --radius:14px;--radius-sm:8px;
+  --sh:0 1px 3px rgba(16,24,40,0.10),0 1px 2px rgba(16,24,40,0.06);
+  --sh-md:0 4px 16px rgba(16,24,40,0.10);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px}
+.app{max-width:430px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;background:var(--bg)}
+.topbar{background:var(--navy);padding:14px 18px 12px;position:sticky;top:0;z-index:100}
+.topbar-row{display:flex;align-items:center;justify-content:space-between}
+.brand-dot{width:8px;height:8px;border-radius:50%;background:var(--org);flex-shrink:0}
+.brand{display:flex;align-items:center;gap:8px}
+.brand-name{font-size:13px;font-weight:700;color:#fff}
+.brand-sub{font-size:10px;color:#90A4AE;margin-top:1px}
+.date-badge{background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:20px;padding:3px 10px;font-size:11px;font-weight:500;color:#90CAF9}
+.tabnav{display:grid;grid-template-columns:1fr 1fr 1fr;background:#fff;border-bottom:1px solid var(--border);position:sticky;top:66px;z-index:99}
+.tab-btn{padding:11px 0;font-size:12px;font-weight:600;color:var(--sub);border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;transition:all .18s;font-family:'Inter',sans-serif;display:flex;align-items:center;justify-content:center;gap:5px}
+.tab-btn.active{color:var(--org);border-bottom-color:var(--org)}
+.main{flex:1;padding:14px}
+.page{display:none}.page.active{display:block}
+.sec-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--sub);margin-bottom:8px;margin-top:2px}
+.card{background:#fff;border-radius:var(--radius);box-shadow:var(--sh);padding:16px 14px;margin-bottom:12px;border:1px solid var(--border)}
+.card-header{display:flex;align-items:center;gap:10px;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--border)}
+.card-icon{width:36px;height:36px;border-radius:9px;background:var(--orgl);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+.card-title{font-size:13px;font-weight:700;color:var(--text)}
+.card-sub{font-size:11px;color:var(--sub);margin-top:1px}
+.field{margin-bottom:12px}
+.field label{display:block;font-size:11px;font-weight:600;color:#344054;margin-bottom:5px}
+.req{color:var(--org)}
+.field input,.field select,.field textarea{width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:13px;font-family:'Inter',sans-serif;color:var(--text);background:#fff;outline:none;transition:border-color .18s;-webkit-appearance:none}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--org);box-shadow:0 0 0 3px rgba(232,89,12,0.10)}
+.field textarea{resize:none;height:70px}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ot-wrap{position:relative}
+.ot-wrap input{padding-right:44px;font-size:20px;font-weight:800;color:var(--org);text-align:center}
+.ot-unit{position:absolute;right:11px;top:50%;transform:translateY(-50%);font-size:11px;font-weight:600;color:var(--sub)}
+/* ALLOWANCE RESULT BOX */
+.allow-box{border-radius:var(--radius-sm);border:1.5px solid var(--border);overflow:hidden;margin-bottom:12px}
+.allow-box-hdr{background:var(--navy);padding:9px 12px;display:flex;align-items:center;justify-content:space-between}
+.allow-box-title{font-size:11px;font-weight:700;color:#fff;letter-spacing:.3px}
+.allow-day-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:rgba(255,255,255,0.12);color:#90CAF9}
+.allow-row{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border-bottom:1px solid var(--border);background:#fff}
+.allow-row:last-child{border-bottom:none}
+.allow-row.earned{background:var(--orgl)}
+.allow-row.not-earned{opacity:.45}
+.allow-icon{font-size:14px;margin-right:6px}
+.allow-label{font-size:12px;font-weight:500;color:var(--text)}
+.allow-cond{font-size:10px;color:var(--sub);margin-top:1px}
+.allow-amt{font-size:14px;font-weight:800;color:var(--org)}
+.allow-amt.zero{color:var(--sub);font-weight:500}
+.allow-total-row{background:var(--navy);padding:10px 12px;display:flex;align-items:center;justify-content:space-between}
+.allow-total-label{font-size:12px;font-weight:700;color:#90A4AE}
+.allow-total-val{font-size:18px;font-weight:800;color:#fff}
+/* BTNS */
+.btn-primary{width:100%;padding:13px;background:var(--org);color:#fff;border:none;border-radius:var(--radius-sm);font-size:13px;font-weight:700;font-family:'Inter',sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:4px;transition:background .18s}
+.btn-primary:active{background:var(--org2)}
+.btn-secondary{width:100%;padding:11px;background:#fff;color:var(--sub);border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-weight:600;font-family:'Inter',sans-serif;cursor:pointer;margin-top:8px}
+/* STATS */
+.stat-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px}
+.stat-card{background:#fff;border-radius:var(--radius-sm);padding:11px 9px;border:1px solid var(--border);box-shadow:var(--sh)}
+.stat-label{font-size:9px;font-weight:700;color:var(--sub);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
+.stat-val{font-size:19px;font-weight:800;color:var(--text)}
+.stat-sub{font-size:9px;color:var(--sub);margin-top:1px}
+/* ENTRY LIST */
+.entry-card{background:#fff;border-radius:var(--radius-sm);padding:12px;margin-bottom:9px;border:1px solid var(--border);box-shadow:var(--sh)}
+.entry-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:7px}
+.entry-name{font-size:13px;font-weight:700;color:var(--text)}
+.entry-meta{font-size:11px;color:var(--sub);margin-top:1px}
+.entry-amt{text-align:right}
+.entry-total{font-size:18px;font-weight:800;color:var(--org)}
+.entry-ot{font-size:11px;color:var(--sub);margin-top:1px}
+.pills{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
+.pill{padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600}
+.pill-org{background:var(--orgl);color:var(--org2)}
+.pill-green{background:var(--greenl);color:#027A48}
+.pill-amber{background:var(--amberl);color:#B54708}
+.pill-blue{background:var(--bluel);color:var(--blue)}
+.pill-purple{background:var(--purplel);color:var(--purple)}
+.pill-gray{background:var(--bg);color:var(--sub)}
+/* FILTER */
+.filter-row{display:flex;gap:7px;margin-bottom:12px;overflow-x:auto;padding-bottom:2px}
+.month-chip{padding:5px 13px;border-radius:20px;font-size:11px;font-weight:600;border:1.5px solid var(--border);background:#fff;color:var(--sub);cursor:pointer;white-space:nowrap;font-family:'Inter',sans-serif}
+.month-chip.active{background:var(--org);border-color:var(--org);color:#fff}
+/* SHARE CARD */
+.share-card{background:linear-gradient(135deg,#0A1628,#1565C0);border-radius:var(--radius);padding:16px 14px;margin-bottom:12px;position:relative;overflow:hidden}
+.share-card::before{content:'';position:absolute;right:-20px;top:-20px;width:90px;height:90px;border-radius:50%;background:rgba(255,255,255,0.05)}
+.share-label{font-size:10px;font-weight:700;letter-spacing:1px;color:#90CAF9;text-transform:uppercase;margin-bottom:3px}
+.share-title{font-size:14px;font-weight:700;color:#fff;margin-bottom:12px}
+.share-stats{display:flex;gap:14px;margin-bottom:12px}
+.share-stat-val{font-size:20px;font-weight:800;color:#fff}
+.share-stat-label{font-size:10px;color:#90CAF9;margin-top:1px}
+.share-divider{width:1px;background:rgba(255,255,255,0.15)}
+.btn-share{width:100%;padding:11px;background:var(--org);color:#fff;border:none;border-radius:var(--radius-sm);font-size:12px;font-weight:700;font-family:'Inter',sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px}
+/* RULES CARD */
+.rules-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.rule-item{background:var(--orgl);border-radius:var(--radius-sm);padding:9px 10px;border:1px solid var(--orgm)}
+.rule-day{font-size:10px;font-weight:700;color:var(--org2);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px}
+.rule-text{font-size:11px;color:#4A1F00;line-height:1.5}
+/* NOTIF */
+.notif{border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:12px;font-size:12px;font-weight:500;display:flex;align-items:flex-start;gap:7px;line-height:1.5;border:1px solid}
+.notif.amber{background:var(--amberl);border-color:#FEC84B;color:#B54708}
+/* EMPTY */
+.empty{text-align:center;padding:36px 20px}
+.empty-icon{font-size:34px;margin-bottom:8px}
+.empty-title{font-size:13px;font-weight:600;color:var(--sub)}
+/* SUCCESS */
+.overlay{position:fixed;inset:0;background:rgba(10,22,40,0.6);backdrop-filter:blur(4px);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px}
+.success-card{background:#fff;border-radius:20px;padding:26px 22px;text-align:center;max-width:330px;width:100%;box-shadow:var(--sh-md)}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-row">
+    <div class="brand">
+      <div class="brand-dot"></div>
+      <div><div class="brand-name">Driver OT & Allowance Module</div><div class="brand-sub">Rodic Consultants Pvt. Ltd.</div></div>
+    </div>
+    <div class="date-badge" id="todayBadge"></div>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabnav">
+  <button class="tab-btn active" onclick="switchTab('entry',this)">📝 Log Entry</button>
+  <button class="tab-btn" onclick="switchTab('monthly',this)">📊 Monthly</button>
+  <button class="tab-btn" onclick="switchTab('rules',this)">📋 Rules</button>
+</div>
+
+<div class="main">
+
+<!-- ══ TAB 1: LOG ENTRY ══ -->
+<div class="page active" id="page-entry">
+
+  <div class="notif amber">⏰ Fill daily before end of shift. OT + all allowances auto-calculated from punch times.</div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon">🚗</div>
+      <div><div class="card-title">Daily Entry</div><div class="card-sub">OT + Conveyance + Food Allowance</div></div>
+    </div>
+
+    <div class="field-row">
+      <div class="field"><label>OT Month <span class="req">*</span></label><input type="month" id="f_month"></div>
+      <div class="field"><label>Date <span class="req">*</span></label><input type="date" id="f_date" onchange="calcAllowances()"></div>
+    </div>
+
+    <div class="field-row">
+      <div class="field">
+        <label>Employee Name <span class="req">*</span></label>
+        <select id="f_name">
+          <option value="">— Select —</option>
+          <option>Prashant</option><option>Malachi</option><option>Anil New</option><option>Anil Old</option>
+          <option>DayaRam</option><option>Ramesh</option><option>Shiv Kumar</option><option>Lovekesh</option>
+          <option>Sudhir</option><option>Dilip</option><option>Vijay</option><option>Sandeep</option>
+          <option>Ashish</option><option>Ajay</option><option>Lekhraj</option><option>Shekhar</option>
+          <option>Ravi</option>
+        </select>
+      </div>
+      <div class="field"><label>Employee ID <span class="req">*</span></label><input type="text" id="f_empid" placeholder="EMP ID"></div>
+    </div>
+
+    <div class="field-row">
+      <div class="field"><label>Punch-In Time <span class="req">*</span></label><input type="time" id="f_punchin" onchange="calcAllowances()" placeholder="HH:MM"></div>
+      <div class="field"><label>Punch-Out Time <span class="req">*</span></label><input type="time" id="f_punchout" onchange="calcAllowances()" placeholder="HH:MM"></div>
+    </div>
+
+    <div class="field">
+      <label>Total OT Hours <span class="req">*</span></label>
+      <div class="ot-wrap"><input type="number" id="f_ot_hrs" placeholder="0" min="0" step="0.5"><span class="ot-unit">hrs</span></div>
+    </div>
+
+    <div class="field">
+      <label>Reason for OT <span class="req">*</span></label>
+      <select id="f_reason">
+        <option value="">— Select reason —</option>
+        <optgroup label="Trip Extension">
+          <option>Airport drop — late flight</option>
+          <option>Airport pickup — delayed arrival</option>
+          <option>Client meeting ran late</option>
+          <option>Site visit — return delayed</option>
+        </optgroup>
+        <optgroup label="Emergency / Duty">
+          <option>Emergency duty assigned</option>
+          <option>Additional trip assigned by manager</option>
+          <option>Night duty assigned</option>
+          <option>Weekend duty assigned</option>
+        </optgroup>
+        <optgroup label="Other">
+          <option>Traffic / route delay</option>
+          <option>Vehicle breakdown — standby duty</option>
+          <option>Other — specify in remarks</option>
+        </optgroup>
+      </select>
+    </div>
+
+    <div class="field"><label>Remarks</label><textarea id="f_remarks" placeholder="Additional details (optional)..."></textarea></div>
+
+    <!-- AUTO-CALCULATED ALLOWANCE RESULT -->
+    <div id="allow-result" class="allow-box hidden">
+      <div class="allow-box-hdr">
+        <span class="allow-box-title">Auto-Calculated Allowances</span>
+        <span class="allow-day-badge" id="day-badge"></span>
+      </div>
+      <div id="allow-rows"></div>
+      <div class="allow-total-row">
+        <span class="allow-total-label">TOTAL ALLOWANCE TODAY</span>
+        <span class="allow-total-val" id="allow-total">₹0</span>
+      </div>
+    </div>
+
+    <button class="btn-primary" onclick="submitEntry()">📤 Save & Send to Admin</button>
+    <button class="btn-secondary" onclick="clearForm()">Clear</button>
+  </div>
+
+</div>
+
+<!-- ══ TAB 2: MONTHLY VIEW ══ -->
+<div class="page" id="page-monthly">
+
+  <div class="filter-row" id="monthFilter"></div>
+
+  <!-- SHARE CARD -->
+  <div class="share-card">
+    <div class="share-label">Monthly Summary</div>
+    <div class="share-title" id="shareTitle">—</div>
+    <div class="share-stats">
+      <div><div class="share-stat-val" id="s-ot">0</div><div class="share-stat-label">OT Hrs</div></div>
+      <div class="share-divider"></div>
+      <div><div class="share-stat-val" id="s-allow">₹0</div><div class="share-stat-label">Allowances</div></div>
+      <div class="share-divider"></div>
+      <div><div class="share-stat-val" id="s-days">0</div><div class="share-stat-label">OT Days</div></div>
+      <div class="share-divider"></div>
+      <div><div class="share-stat-val" id="s-drivers">0</div><div class="share-stat-label">Drivers</div></div>
+    </div>
+    <button class="btn-share" onclick="shareMonthly()">📧 Share Monthly Report</button>
+  </div>
+
+  <div class="stat-row">
+    <div class="stat-card"><div class="stat-label">Entries</div><div class="stat-val" id="stat-entries">0</div></div>
+    <div class="stat-card"><div class="stat-label">OT Hrs</div><div class="stat-val" id="stat-ot" style="color:var(--org)">0</div></div>
+    <div class="stat-card"><div class="stat-label">Allowance</div><div class="stat-val" id="stat-allow" style="color:var(--green)">₹0</div></div>
+  </div>
+
+  <div class="sec-label">Daily Log</div>
+  <div id="entryList"></div>
+
+</div>
+
+<!-- ══ TAB 3: RULES ══ -->
+<div class="page" id="page-rules">
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon">📋</div>
+      <div><div class="card-title">Allowance Rules</div><div class="card-sub">Auto-applied based on punch time</div></div>
+    </div>
+
+    <div class="sec-label" style="margin-top:0">Monday to Saturday</div>
+    <div style="margin-bottom:14px">
+      <div class="allow-row earned" style="border-radius:8px 8px 0 0;border:1px solid var(--orgm)">
+        <div><span class="allow-icon">🌅</span><span class="allow-label">Early Conveyance</span><div class="allow-cond">Punch-in before 07:30 AM</div></div>
+        <div class="allow-amt">₹100</div>
+      </div>
+      <div class="allow-row" style="border:1px solid var(--border);border-top:none">
+        <div><span class="allow-icon">🥐</span><span class="allow-label">Breakfast</span><div class="allow-cond">Punch-in before 07:30 AM</div></div>
+        <div class="allow-amt">₹50</div>
+      </div>
+      <div class="allow-row" style="border:1px solid var(--border);border-top:none">
+        <div><span class="allow-icon">🌙</span><span class="allow-label">Late Conveyance</span><div class="allow-cond">Punch-out after 10:00 PM</div></div>
+        <div class="allow-amt">₹100</div>
+      </div>
+      <div class="allow-row" style="border-radius:0 0 8px 8px;border:1px solid var(--border);border-top:none">
+        <div><span class="allow-icon">🍽️</span><span class="allow-label">Dinner</span><div class="allow-cond">Punch-out after 10:00 PM</div></div>
+        <div class="allow-amt">₹100</div>
+      </div>
+    </div>
+    <div style="background:var(--bluel);border:1px solid #90CAF9;border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:#0D47A1">
+      💡 <strong>Max on weekday:</strong> If punch-in &lt; 07:30 AND punch-out &gt; 22:00 → ₹100 + ₹50 + ₹100 + ₹100 = <strong>₹350</strong>
+    </div>
+
+    <div class="sec-label">Sunday Rules</div>
+    <div>
+      <div class="allow-row earned" style="border-radius:8px 8px 0 0;border:1px solid var(--orgm)">
+        <div><span class="allow-icon">🌅</span><span class="allow-label">Early Conveyance</span><div class="allow-cond">Punch-in before 07:30 AM</div></div>
+        <div class="allow-amt">₹100</div>
+      </div>
+      <div class="allow-row" style="border:1px solid var(--border);border-top:none">
+        <div><span class="allow-icon">🥐</span><span class="allow-label">Breakfast</span><div class="allow-cond">Punch-in before 07:30 AM</div></div>
+        <div class="allow-amt">₹50</div>
+      </div>
+      <div class="allow-row" style="border:1px solid var(--border);border-top:none">
+        <div><span class="allow-icon">🍱</span><span class="allow-label">Afternoon Conveyance + Lunch</span><div class="allow-cond">Punch-out after 08:00 PM</div></div>
+        <div class="allow-amt">₹200</div>
+      </div>
+      <div class="allow-row" style="border-radius:0 0 8px 8px;border:1px solid var(--border);border-top:none">
+        <div><span class="allow-icon">🍽️</span><span class="allow-label">Dinner</span><div class="allow-cond">Punch-out after 10:00 PM</div></div>
+        <div class="allow-amt">₹100</div>
+      </div>
+    </div>
+    <div style="background:var(--purplel);border:1px solid #C4B5FD;border-radius:8px;padding:10px 12px;margin-top:10px;font-size:12px;color:#5B21B6">
+      💡 <strong>Max on Sunday:</strong> Punch-in &lt; 07:30 AND punch-out &gt; 22:00 → ₹100 + ₹50 + ₹200 + ₹100 = <strong>₹450</strong>
+    </div>
+  </div>
+</div>
+
+</div><!-- /main -->
+</div><!-- /app -->
+
+<!-- SUCCESS OVERLAY -->
+<div class="overlay hidden" id="successOverlay">
+  <div class="success-card">
+    <div style="font-size:46px;margin-bottom:10px">✅</div>
+    <div style="font-size:17px;font-weight:800;color:var(--text);margin-bottom:6px">Entry Saved!</div>
+    <div style="font-size:12px;color:var(--sub);line-height:1.5;margin-bottom:18px">OT & allowances logged. Your email app will open — please send to notify Admin.</div>
+    <button class="btn-primary" onclick="document.getElementById('successOverlay').classList.add('hidden')">Done</button>
+  </div>
+</div>
+
+<script>
+const adminEmail = 'ram.ratan@rodicconsultants.com';
+let entries = [];
+let activeMonth = '';
+
+const today = new Date();
+const todayStr = today.toISOString().split('T')[0];
+const monthStr = todayStr.slice(0,7);
+
+document.getElementById('todayBadge').textContent =
+  today.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
+document.getElementById('f_date').value = todayStr;
+document.getElementById('f_month').value = monthStr;
+
+// ── TAB SWITCH ──
+function switchTab(tab, btn) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+tab).classList.add('active');
+  btn.classList.add('active');
+  if(tab==='monthly') renderMonthly();
+}
+
+// ── ALLOWANCE CALCULATION ENGINE ──
+function calcAllowances() {
+  const dateVal  = document.getElementById('f_date').value;
+  const punchIn  = document.getElementById('f_punchin').value;
+  const punchOut = document.getElementById('f_punchout').value;
+
+  if (!dateVal || !punchIn || !punchOut) {
+    document.getElementById('allow-result').classList.add('hidden');
+    return;
+  }
+
+  const dayOfWeek = new Date(dateVal+'T00:00:00').getDay(); // 0=Sun,6=Sat
+  const isSunday  = dayOfWeek === 0;
+
+  const [ih, im] = punchIn.split(':').map(Number);
+  const [oh, om] = punchOut.split(':').map(Number);
+  const piMins   = ih * 60 + im;
+  const poMins   = oh * 60 + om;
+
+  const earlyIn   = piMins < 7*60+30;  // before 07:30
+  const late22    = poMins >= 22*60;   // after or at 22:00
+  const late20sun = poMins >= 20*60;   // after 20:00 (Sunday only)
+
+  let allowances = [];
+  let total = 0;
+
+  if (isSunday) {
+    // SUNDAY RULES
+    if (earlyIn) {
+      allowances.push({icon:'🌅',label:'Early Conveyance',cond:'Punch-in before 07:30',amt:100,earned:true});
+      allowances.push({icon:'🥐',label:'Breakfast',cond:'Punch-in before 07:30',amt:50,earned:true});
+      total += 150;
+    } else {
+      allowances.push({icon:'🌅',label:'Early Conveyance',cond:'Punch-in before 07:30 (not applicable)',amt:100,earned:false});
+      allowances.push({icon:'🥐',label:'Breakfast',cond:'Punch-in before 07:30 (not applicable)',amt:50,earned:false});
+    }
+    if (late20sun) {
+      allowances.push({icon:'🍱',label:'Afternoon Conveyance + Lunch',cond:'Punch-out after 08:00 PM',amt:200,earned:true});
+      total += 200;
+    } else {
+      allowances.push({icon:'🍱',label:'Afternoon Conveyance + Lunch',cond:'Punch-out after 08:00 PM (not applicable)',amt:200,earned:false});
+    }
+    if (late22) {
+      allowances.push({icon:'🍽️',label:'Dinner',cond:'Punch-out after 10:00 PM',amt:100,earned:true});
+      total += 100;
+    } else {
+      allowances.push({icon:'🍽️',label:'Dinner',cond:'Punch-out after 10:00 PM (not applicable)',amt:100,earned:false});
+    }
+  } else {
+    // MON–SAT RULES
+    if (earlyIn) {
+      allowances.push({icon:'🌅',label:'Early Conveyance',cond:'Punch-in before 07:30',amt:100,earned:true});
+      allowances.push({icon:'🥐',label:'Breakfast',cond:'Punch-in before 07:30',amt:50,earned:true});
+      total += 150;
+    } else {
+      allowances.push({icon:'🌅',label:'Early Conveyance',cond:'Punch-in before 07:30 (not applicable)',amt:100,earned:false});
+      allowances.push({icon:'🥐',label:'Breakfast',cond:'Punch-in before 07:30 (not applicable)',amt:50,earned:false});
+    }
+    if (late22) {
+      allowances.push({icon:'🌙',label:'Late Conveyance',cond:'Punch-out after 10:00 PM',amt:100,earned:true});
+      allowances.push({icon:'🍽️',label:'Dinner',cond:'Punch-out after 10:00 PM',amt:100,earned:true});
+      total += 200;
+    } else {
+      allowances.push({icon:'🌙',label:'Late Conveyance',cond:'Punch-out after 10:00 PM (not applicable)',amt:100,earned:false});
+      allowances.push({icon:'🍽️',label:'Dinner',cond:'Punch-out after 10:00 PM (not applicable)',amt:100,earned:false});
+    }
+  }
+
+  // Render
+  const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  document.getElementById('day-badge').textContent = dayNames[dayOfWeek];
+  document.getElementById('allow-rows').innerHTML = allowances.map(a=>`
+    <div class="allow-row ${a.earned?'earned':'not-earned'}">
+      <div><span class="allow-icon">${a.icon}</span><span class="allow-label">${a.label}</span><div class="allow-cond">${a.cond}</div></div>
+      <div class="allow-amt ${a.earned?'':'zero'}">₹${a.amt}</div>
+    </div>`).join('');
+  document.getElementById('allow-total').textContent = '₹'+total;
+  document.getElementById('allow-result').classList.remove('hidden');
+
+  return {allowances: allowances.filter(a=>a.earned), total, isSunday, dayName: dayNames[dayOfWeek]};
+}
+
+// ── SUBMIT ──
+function submitEntry() {
+  const month   = document.getElementById('f_month').value;
+  const date    = document.getElementById('f_date').value;
+  const name    = document.getElementById('f_name').value;
+  const empid   = document.getElementById('f_empid').value.trim();
+  const punchIn = document.getElementById('f_punchin').value;
+  const punchOut= document.getElementById('f_punchout').value;
+  const ot_hrs  = document.getElementById('f_ot_hrs').value;
+  const reason  = document.getElementById('f_reason').value;
+  const remarks = document.getElementById('f_remarks').value.trim();
+
+  if(!month||!date||!name||!empid||!punchIn||!punchOut||!ot_hrs||!reason){
+    alert('Please fill all mandatory fields (*)'); return;
+  }
+
+  const calc = calcAllowances();
+  const entry = {
+    month,date,name,empid,punchIn,punchOut,
+    ot_hrs:parseFloat(ot_hrs),reason,remarks,
+    allowances: calc ? calc.allowances : [],
+    totalAllowance: calc ? calc.total : 0,
+    dayName: calc ? calc.dayName : '',
+    id:Date.now()
+  };
+  entries.push(entry);
+
+  // Build email
+  const dateLabel  = new Date(date+'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'long',year:'numeric'});
+  const monthLabel = new Date(month+'-01').toLocaleDateString('en-IN',{month:'long',year:'numeric'});
+  const allowLines = entry.allowances.length
+    ? entry.allowances.map(a=>`  ${a.icon} ${a.label.padEnd(30)}: ₹${a.amt}`).join('\n')
+    : '  None';
+
+  const subject = encodeURIComponent(`Daily OT Entry — ${name} | ${dateLabel}`);
+  const body = encodeURIComponent(
+`Hi Ram Ratan,
+
+Daily OT & Allowance entry for your records:
+
+══════════════════════════════════════
+  DAILY ENTRY — RODIC CONSULTANTS
+══════════════════════════════════════
+  Employee Name   : ${name}
+  Employee ID     : ${empid}
+  Month           : ${monthLabel}
+  Date            : ${dateLabel} (${entry.dayName})
+  Punch-In        : ${punchIn}
+  Punch-Out       : ${punchOut}
+  Total OT        : ${ot_hrs} hrs
+  Reason          : ${reason}
+  Remarks         : ${remarks||'—'}
+──────────────────────────────────────
+  ALLOWANCES EARNED
+──────────────────────────────────────
+${allowLines}
+──────────────────────────────────────
+  TOTAL ALLOWANCE : ₹${entry.totalAllowance}
+══════════════════════════════════════
+
+Submitted via Driver OT Module
+Rodic Consultants Pvt. Ltd.`);
+
+  window.location.href = `mailto:${adminEmail}?subject=${subject}&body=${body}`;
+  document.getElementById('successOverlay').classList.remove('hidden');
+  clearForm();
+}
+
+// ── MONTHLY SHARE ──
+function shareMonthly() {
+  const filtered = entries.filter(e=>e.month===activeMonth);
+  if(!filtered.length){ alert('No entries for this month.'); return; }
+
+  const monthLabel   = new Date(activeMonth+'-01').toLocaleDateString('en-IN',{month:'long',year:'numeric'});
+  const totalOT      = filtered.reduce((s,e)=>s+e.ot_hrs,0).toFixed(1);
+  const totalAllow   = filtered.reduce((s,e)=>s+e.totalAllowance,0);
+  const uniqueDrivers= [...new Set(filtered.map(e=>e.name))];
+
+  const driverBreakup = uniqueDrivers.map(n=>{
+    const de = filtered.filter(e=>e.name===n);
+    const hrs = de.reduce((s,e)=>s+e.ot_hrs,0).toFixed(1);
+    const allow = de.reduce((s,e)=>s+e.totalAllowance,0);
+    return `  ${n.padEnd(14)}: OT ${hrs}h  |  Allowance ₹${allow}  |  Days: ${de.length}`;
+  }).join('\n');
+
+  const dailyLog = filtered
+    .sort((a,b)=>a.date.localeCompare(b.date))
+    .map(e=>{
+      const d = new Date(e.date+'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short'});
+      const aNames = e.allowances.map(a=>a.label.split(' ')[0]).join('+') || 'None';
+      return `  ${d}  ${e.name.padEnd(12)}  In:${e.punchIn}  Out:${e.punchOut}  OT:${e.ot_hrs}h  Allow:₹${e.totalAllowance}`;
+    }).join('\n');
+
+  const subject = encodeURIComponent(`Monthly OT & Allowance Report — ${monthLabel}`);
+  const body = encodeURIComponent(
+`Hi Ram Ratan,
+
+Please find the Monthly OT & Allowance Report:
+
+══════════════════════════════════════
+  MONTHLY REPORT — RODIC CONSULTANTS
+  Month: ${monthLabel}
+══════════════════════════════════════
+
+SUMMARY
+  Total OT Hours      : ${totalOT} hrs
+  Total Allowances    : ₹${totalAllow}
+  Total OT Days       : ${filtered.length}
+  Drivers with OT     : ${uniqueDrivers.length}
+
+DRIVER-WISE BREAKUP
+${driverBreakup}
+
+DAILY LOG (Date | Name | Punch-In | Punch-Out | OT | Allowance)
+${dailyLog}
+
+══════════════════════════════════════
+Driver OT Module — Rodic Consultants Pvt. Ltd.`);
+
+  window.location.href = `mailto:${adminEmail}?subject=${subject}&body=${body}`;
+}
+
+// ── RENDER MONTHLY ──
+function renderMonthly() {
+  const months = [...new Set([monthStr,...entries.map(e=>e.month)])].sort().reverse();
+  if(!activeMonth||!months.includes(activeMonth)) activeMonth=months[0];
+
+  document.getElementById('monthFilter').innerHTML = months.map(m=>{
+    const label = new Date(m+'-01').toLocaleDateString('en-IN',{month:'short',year:'numeric'});
+    return `<button class="month-chip ${m===activeMonth?'active':''}" onclick="setMonth('${m}')">${label}</button>`;
+  }).join('');
+
+  const filtered = entries.filter(e=>e.month===activeMonth);
+  const totalOT    = filtered.reduce((s,e)=>s+e.ot_hrs,0);
+  const totalAllow = filtered.reduce((s,e)=>s+e.totalAllowance,0);
+  const drivers    = [...new Set(filtered.map(e=>e.name))].length;
+  const monthLabel = new Date(activeMonth+'-01').toLocaleDateString('en-IN',{month:'long',year:'numeric'});
+
+  document.getElementById('stat-entries').textContent = filtered.length;
+  document.getElementById('stat-ot').textContent      = totalOT.toFixed(1);
+  document.getElementById('stat-allow').textContent   = '₹'+totalAllow;
+  document.getElementById('s-ot').textContent         = totalOT.toFixed(1);
+  document.getElementById('s-allow').textContent      = '₹'+totalAllow;
+  document.getElementById('s-days').textContent       = filtered.length;
+  document.getElementById('s-drivers').textContent    = drivers;
+  document.getElementById('shareTitle').textContent   = monthLabel;
+
+  const listEl = document.getElementById('entryList');
+  if(!filtered.length){
+    listEl.innerHTML=`<div class="empty"><div class="empty-icon">📋</div><div class="empty-title">No entries yet</div></div>`;
+    return;
+  }
+
+  listEl.innerHTML = filtered.sort((a,b)=>b.date.localeCompare(a.date)).map(e=>{
+    const d = new Date(e.date+'T00:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'});
+    const allowPills = e.allowances.map(a=>`<span class="pill pill-green">${a.icon} ₹${a.amt}</span>`).join('');
+    return `<div class="entry-card">
+      <div class="entry-top">
+        <div>
+          <div class="entry-name">${e.name}</div>
+          <div class="entry-meta">${e.empid} · ${d} · ${e.dayName||''}</div>
+          <div class="entry-meta">In: ${e.punchIn} &nbsp;|&nbsp; Out: ${e.punchOut}</div>
+        </div>
+        <div class="entry-amt">
+          <div class="entry-total">₹${e.totalAllowance}</div>
+          <div class="entry-ot">OT: ${e.ot_hrs}h</div>
+        </div>
+      </div>
+      <div class="pills">
+        <span class="pill pill-org">OT: ${e.ot_hrs}h</span>
+        ${allowPills}
+        ${e.allowances.length===0?'<span class="pill pill-gray">No allowance</span>':''}
+      </div>
+      ${e.remarks?`<div style="font-size:11px;color:var(--sub);margin-top:7px">📝 ${e.remarks}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function setMonth(m){ activeMonth=m; renderMonthly(); }
+
+function clearForm(){
+  ['f_name','f_reason'].forEach(id=>document.getElementById(id).selectedIndex=0);
+  ['f_empid','f_ot_hrs','f_remarks','f_punchin','f_punchout'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('f_date').value=todayStr;
+  document.getElementById('f_month').value=monthStr;
+  document.getElementById('allow-result').classList.add('hidden');
+}
+</script>
+</body>
+</html>
