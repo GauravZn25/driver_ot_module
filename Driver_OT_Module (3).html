@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Driver OT & Allowance Module — Rodic</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 :root{
@@ -11,7 +12,7 @@
   --navy:#0A1628;--white:#FFFFFF;--bg:#F2F4F7;--border:#E4E7EC;
   --text:#101828;--sub:#667085;--green:#12B76A;--greenl:#ECFDF3;
   --amber:#F79009;--amberl:#FFFAEB;--blue:#1565C0;--bluel:#EFF8FF;
-  --purple:#7C3AED;--purplel:#F5F3FF;
+  --purple:#7C3AED;--purplel:#F5F3FF;--red:#D92D20;--redl:#FEF3F2;
   --radius:14px;--radius-sm:8px;
   --sh:0 1px 3px rgba(16,24,40,0.10),0 1px 2px rgba(16,24,40,0.06);
   --sh-md:0 4px 16px rgba(16,24,40,0.10);
@@ -19,6 +20,39 @@
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px}
 .app{max-width:430px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;background:var(--bg)}
+
+/* ── PHONE-FRAME MODE (desktop / wide viewports) ── */
+@media (min-width:520px){
+  html,body{background:#0b1220}
+  body{
+    min-height:100vh;display:flex;align-items:center;justify-content:center;padding:32px 16px;
+  }
+  .app{
+    width:390px;height:844px;min-height:0;flex:none;
+    border:12px solid #111417;border-radius:52px;
+    box-shadow:0 40px 80px rgba(0,0,0,.55),0 0 0 2px #000;
+    position:relative;overflow-y:auto;overflow-x:hidden;
+    scrollbar-width:none;
+  }
+  .app::-webkit-scrollbar{display:none}
+  .login-screen{min-height:100vh}
+}
+@media (min-width:520px){
+  .login-screen{
+    width:390px;height:844px;min-height:0;margin:0 auto;
+    border:12px solid #111417;border-radius:52px;
+    box-shadow:0 40px 80px rgba(0,0,0,.55),0 0 0 2px #000;
+    position:relative;overflow:hidden;
+  }
+  .login-screen::before{
+    content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);
+    width:130px;height:26px;background:#111417;border-radius:0 0 16px 16px;z-index:500;
+  }
+  .login-screen::after{
+    content:'';position:absolute;bottom:8px;left:calc(50% - 67px);
+    width:134px;height:5px;background:rgba(255,255,255,0.5);border-radius:10px;z-index:500;
+  }
+}
 .topbar{background:var(--navy);padding:14px 18px 12px;position:sticky;top:0;z-index:100}
 .topbar-row{display:flex;align-items:center;justify-content:space-between}
 .brand-dot{width:8px;height:8px;border-radius:50%;background:var(--org);flex-shrink:0}
@@ -26,8 +60,13 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
 .brand-name{font-size:13px;font-weight:700;color:#fff}
 .brand-sub{font-size:10px;color:#90A4AE;margin-top:1px}
 .date-badge{background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:20px;padding:3px 10px;font-size:11px;font-weight:500;color:#90CAF9}
-.tabnav{display:grid;grid-template-columns:1fr 1fr 1fr;background:#fff;border-bottom:1px solid var(--border);position:sticky;top:66px;z-index:99}
-.tab-btn{padding:11px 0;font-size:12px;font-weight:600;color:var(--sub);border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;transition:all .18s;font-family:'Inter',sans-serif;display:flex;align-items:center;justify-content:center;gap:5px}
+.user-chip{display:flex;align-items:center;gap:8px}
+.user-role-badge{font-size:9px;font-weight:700;padding:2px 8px;border-radius:20px;letter-spacing:.4px;text-transform:uppercase}
+.user-role-badge.admin{background:rgba(124,58,237,0.18);color:#C4B5FD}
+.user-role-badge.user{background:rgba(18,183,106,0.18);color:#6CE9A6}
+.logout-btn{background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:#fff;font-size:11px;font-weight:600;padding:5px 10px;border-radius:8px;cursor:pointer;font-family:'Inter',sans-serif}
+.tabnav{display:grid;background:#fff;border-bottom:1px solid var(--border);position:sticky;top:66px;z-index:99}
+.tab-btn{padding:11px 0;font-size:11.5px;font-weight:600;color:var(--sub);border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;transition:all .18s;font-family:'Inter',sans-serif;display:flex;align-items:center;justify-content:center;gap:5px}
 .tab-btn.active{color:var(--org);border-bottom-color:var(--org)}
 .main{flex:1;padding:14px}
 .page{display:none}.page.active{display:block}
@@ -41,8 +80,9 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
 .field label{display:block;font-size:11px;font-weight:600;color:#344054;margin-bottom:5px}
 .req{color:var(--org)}
 .field input,.field select,.field textarea{width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:13px;font-family:'Inter',sans-serif;color:var(--text);background:#fff;outline:none;transition:border-color .18s;-webkit-appearance:none}
+.field input:disabled{background:var(--bg);color:var(--sub)}
 .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--org);box-shadow:0 0 0 3px rgba(232,89,12,0.10)}
-.field textarea{resize:none;height:70px}
+.field textarea{resize:none;height:60px}
 .field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .ot-wrap{position:relative}
 .ot-wrap input{padding-right:44px;font-size:20px;font-weight:800;color:var(--org);text-align:center}
@@ -64,10 +104,19 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
 .allow-total-row{background:var(--navy);padding:10px 12px;display:flex;align-items:center;justify-content:space-between}
 .allow-total-label{font-size:12px;font-weight:700;color:#90A4AE}
 .allow-total-val{font-size:18px;font-weight:800;color:#fff}
+.ot-badge-row{display:flex;align-items:center;justify-content:space-between;background:var(--orgl);border:1.5px solid var(--orgm);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:12px}
+.ot-badge-label{font-size:11px;font-weight:700;color:var(--org2)}
+.ot-badge-val{font-size:20px;font-weight:800;color:var(--org)}
 /* BTNS */
 .btn-primary{width:100%;padding:13px;background:var(--org);color:#fff;border:none;border-radius:var(--radius-sm);font-size:13px;font-weight:700;font-family:'Inter',sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:4px;transition:background .18s}
 .btn-primary:active{background:var(--org2)}
+.btn-primary:disabled{background:var(--border);color:var(--sub);cursor:not-allowed}
 .btn-secondary{width:100%;padding:11px;background:#fff;color:var(--sub);border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-weight:600;font-family:'Inter',sans-serif;cursor:pointer;margin-top:8px}
+.btn-green{background:var(--green)}
+.btn-green:active{background:#0a8a51}
+.btn-red{background:var(--red)}
+.btn-red:active{background:#a3241a}
+.btn-sm{width:auto;padding:7px 12px;font-size:11px;margin-top:0}
 /* STATS */
 .stat-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px}
 .stat-card{background:#fff;border-radius:var(--radius-sm);padding:11px 9px;border:1px solid var(--border);box-shadow:var(--sh)}
@@ -90,6 +139,10 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
 .pill-blue{background:var(--bluel);color:var(--blue)}
 .pill-purple{background:var(--purplel);color:var(--purple)}
 .pill-gray{background:var(--bg);color:var(--sub)}
+.entry-actions{display:flex;gap:7px;margin-top:9px}
+.icon-btn{flex:1;padding:7px;border-radius:8px;border:1.5px solid var(--border);background:#fff;font-size:11px;font-weight:600;color:var(--sub);cursor:pointer;font-family:'Inter',sans-serif;display:flex;align-items:center;justify-content:center;gap:5px}
+.icon-btn.edit{color:var(--blue);border-color:#90CAF9}
+.icon-btn.del{color:var(--red);border-color:#FDA29B}
 /* FILTER */
 .filter-row{display:flex;gap:7px;margin-bottom:12px;overflow-x:auto;padding-bottom:2px}
 .month-chip{padding:5px 13px;border-radius:20px;font-size:11px;font-weight:600;border:1.5px solid var(--border);background:#fff;color:var(--sub);cursor:pointer;white-space:nowrap;font-family:'Inter',sans-serif}
@@ -99,11 +152,11 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
 .share-card::before{content:'';position:absolute;right:-20px;top:-20px;width:90px;height:90px;border-radius:50%;background:rgba(255,255,255,0.05)}
 .share-label{font-size:10px;font-weight:700;letter-spacing:1px;color:#90CAF9;text-transform:uppercase;margin-bottom:3px}
 .share-title{font-size:14px;font-weight:700;color:#fff;margin-bottom:12px}
-.share-stats{display:flex;gap:14px;margin-bottom:12px}
+.share-stats{display:flex;gap:14px;margin-bottom:12px;flex-wrap:wrap}
 .share-stat-val{font-size:20px;font-weight:800;color:#fff}
 .share-stat-label{font-size:10px;color:#90CAF9;margin-top:1px}
 .share-divider{width:1px;background:rgba(255,255,255,0.15)}
-.btn-share{width:100%;padding:11px;background:var(--org);color:#fff;border:none;border-radius:var(--radius-sm);font-size:12px;font-weight:700;font-family:'Inter',sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px}
+.btn-share{width:100%;padding:11px;background:var(--org);color:#fff;border:none;border-radius:var(--radius-sm);font-size:12px;font-weight:700;font-family:'Inter',sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;margin-top:8px}
 /* RULES CARD */
 .rules-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .rule-item{background:var(--orgl);border-radius:var(--radius-sm);padding:9px 10px;border:1px solid var(--orgm)}
@@ -112,6 +165,9 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
 /* NOTIF */
 .notif{border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:12px;font-size:12px;font-weight:500;display:flex;align-items:flex-start;gap:7px;line-height:1.5;border:1px solid}
 .notif.amber{background:var(--amberl);border-color:#FEC84B;color:#B54708}
+.notif.blue{background:var(--bluel);border-color:#90CAF9;color:#0D47A1}
+.notif.green{background:var(--greenl);border-color:#6CE9A6;color:#027A48}
+.notif.red{background:var(--redl);border-color:#FDA29B;color:#912018}
 /* EMPTY */
 .empty{text-align:center;padding:36px 20px}
 .empty-icon{font-size:34px;margin-bottom:8px}
@@ -120,74 +176,133 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
 .overlay{position:fixed;inset:0;background:rgba(10,22,40,0.6);backdrop-filter:blur(4px);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px}
 .success-card{background:#fff;border-radius:20px;padding:26px 22px;text-align:center;max-width:330px;width:100%;box-shadow:var(--sh-md)}
 .hidden{display:none!important}
+/* LOGIN */
+.login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:linear-gradient(160deg,#0A1628,#122844 55%,#1A3A5C)}
+.login-card{background:#fff;border-radius:20px;padding:28px 22px;max-width:380px;width:100%;box-shadow:var(--sh-md)}
+.login-logo{text-align:center;margin-bottom:18px}
+.login-logo .brand-name{color:var(--navy);font-size:16px}
+.login-logo .brand-sub{color:var(--sub);font-size:11px;margin-top:2px}
+.role-tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:18px;background:var(--bg);padding:4px;border-radius:11px}
+.role-tab{padding:9px 0;text-align:center;font-size:12px;font-weight:700;color:var(--sub);border-radius:8px;cursor:pointer;border:none;background:none;font-family:'Inter',sans-serif}
+.role-tab.active{background:#fff;color:var(--org);box-shadow:var(--sh)}
+.login-err{background:var(--redl);border:1px solid #FDA29B;color:var(--red);font-size:12px;font-weight:600;padding:8px 10px;border-radius:8px;margin-bottom:12px}
+.hint-box{background:var(--bg);border-radius:8px;padding:9px 10px;font-size:10.5px;color:var(--sub);margin-top:14px;line-height:1.5}
+/* PUNCH */
+.punch-clock{text-align:center;padding:18px 10px 8px}
+.punch-time{font-size:34px;font-weight:800;color:var(--navy);letter-spacing:.5px}
+.punch-date{font-size:12px;color:var(--sub);margin-top:2px}
+.punch-status-pill{display:inline-flex;align-items:center;gap:6px;padding:5px 14px;border-radius:20px;font-size:11px;font-weight:700;margin-top:10px}
+.punch-status-pill.out{background:var(--redl);color:var(--red)}
+.punch-status-pill.in{background:var(--greenl);color:#027A48}
+.punch-btn-wrap{display:flex;gap:10px;margin-top:16px}
+.punch-btn{flex:1;padding:18px 8px;border-radius:16px;border:none;font-size:13px;font-weight:700;font-family:'Inter',sans-serif;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px}
+.punch-btn .pb-ic{font-size:24px}
+.punch-btn.pin{background:var(--greenl);color:#027A48;border:2px solid #6CE9A6}
+.punch-btn.pin:disabled{opacity:.4;cursor:not-allowed}
+.punch-btn.pout{background:var(--redl);color:var(--red);border:2px solid #FDA29B}
+.punch-btn.pout:disabled{opacity:.4;cursor:not-allowed}
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(10,22,40,0.55);z-index:300;display:flex;align-items:flex-end;justify-content:center}
+.modal-card{background:#fff;border-radius:20px 20px 0 0;padding:20px 18px 24px;max-width:430px;width:100%;max-height:88vh;overflow-y:auto;box-shadow:var(--sh-md)}
+.modal-title{font-size:14px;font-weight:800;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between}
+.modal-close{background:var(--bg);border:none;width:26px;height:26px;border-radius:50%;font-size:13px;color:var(--sub);cursor:pointer}
+/* USER LIST */
+.user-row{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px;background:#fff}
+.user-row-name{font-size:12.5px;font-weight:700;color:var(--text)}
+.user-row-meta{font-size:10.5px;color:var(--sub);margin-top:1px}
+.select-inline{padding:7px 9px;border:1.5px solid var(--border);border-radius:8px;font-size:11.5px;font-family:'Inter',sans-serif;background:#fff}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0}
+.switch{position:relative;width:40px;height:22px;flex-shrink:0}
+.switch input{opacity:0;width:0;height:0}
+.slider{position:absolute;cursor:pointer;inset:0;background:var(--border);border-radius:22px;transition:.2s}
+.slider:before{position:absolute;content:"";height:16px;width:16px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.2s}
+input:checked+.slider{background:var(--org)}
+input:checked+.slider:before{transform:translateX(18px)}
 </style>
 </head>
 <body>
-<div class="app">
+
+<!-- ══════════ LOGIN SCREEN ══════════ -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="brand-name">Driver OT & Allowance Module</div>
+      <div class="brand-sub">Rodic Consultants Pvt. Ltd.</div>
+    </div>
+    <div class="role-tabs">
+      <button class="role-tab active" id="roleTabUser" onclick="setLoginRole('user')">🚗 Driver Login</button>
+      <button class="role-tab" id="roleTabAdmin" onclick="setLoginRole('admin')">🔑 Admin Login</button>
+    </div>
+    <div id="loginErr" class="login-err hidden"></div>
+    <div class="field"><label>Username <span class="req">*</span></label><input type="text" id="loginUsername" autocomplete="username" placeholder="Enter username"></div>
+    <div class="field"><label>Password <span class="req">*</span></label><input type="password" id="loginPassword" autocomplete="current-password" placeholder="Enter password" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <button class="btn-primary" onclick="doLogin()">Sign In</button>
+    <div class="hint-box" id="loginHint">🚗 <strong>Drivers:</strong> use the username &amp; password created for you by Admin. Contact Admin if you don't have login details yet.</div>
+  </div>
+</div>
+
+<!-- ══════════ MAIN APP ══════════ -->
+<div class="app hidden" id="appScreen">
 
 <!-- TOPBAR -->
 <div class="topbar">
   <div class="topbar-row">
     <div class="brand">
       <div class="brand-dot"></div>
-      <div><div class="brand-name">Driver OT & Allowance Module</div><div class="brand-sub">Rodic Consultants Pvt. Ltd.</div></div>
+      <div><div class="brand-name">Driver OT & Allowance Module</div><div class="brand-sub" id="sessionNameLabel">Rodic Consultants Pvt. Ltd.</div></div>
     </div>
-    <div class="date-badge" id="todayBadge"></div>
+    <div class="user-chip">
+      <span class="date-badge" id="todayBadge"></span>
+      <button class="logout-btn" onclick="doLogout()">Logout</button>
+    </div>
   </div>
 </div>
 
-<!-- TABS -->
-<div class="tabnav">
-  <button class="tab-btn active" onclick="switchTab('entry',this)">📝 Log Entry</button>
-  <button class="tab-btn" onclick="switchTab('monthly',this)">📊 Monthly</button>
-  <button class="tab-btn" onclick="switchTab('rules',this)">📋 Rules</button>
-</div>
+<!-- TABS (rendered by JS based on role) -->
+<div class="tabnav" id="tabnav"></div>
 
 <div class="main">
 
-<!-- ══ TAB 1: LOG ENTRY ══ -->
-<div class="page active" id="page-entry">
+<!-- ══ USER PAGE: PUNCH ══ -->
+<div class="page" id="page-punch">
+  <div class="notif blue">⏰ Duty hours are <strong>8:00 AM – 8:00 PM</strong>. Any time worked outside this window is auto-calculated as Overtime (OT) the moment you punch out.<br>📍 Your location is captured with each Punch In / Punch Out — please allow location access when your browser asks.</div>
 
-  <div class="notif amber">⏰ Fill daily before end of shift. OT + all allowances auto-calculated from punch times.</div>
+  <div class="card">
+    <div class="punch-clock">
+      <div class="punch-time" id="liveClock">--:--:--</div>
+      <div class="punch-date" id="liveDate">—</div>
+      <span class="punch-status-pill out" id="punchStatusPill">Not Punched In</span>
+    </div>
+    <div class="punch-btn-wrap">
+      <button class="punch-btn pin" id="btnPunchIn" onclick="punchIn()"><span class="pb-ic">▶️</span>Punch In</button>
+      <button class="punch-btn pout" id="btnPunchOut" onclick="punchOut()" disabled><span class="pb-ic">⏹️</span>Punch Out</button>
+    </div>
+  </div>
+
+  <div class="card" id="todayEntryCard" style="display:none">
+    <div class="card-header">
+      <div class="card-icon">📌</div>
+      <div><div class="card-title">Today's Entry</div><div class="card-sub" id="todayEntrySub">—</div></div>
+    </div>
+    <div id="todayEntryBody"></div>
+  </div>
 
   <div class="card">
     <div class="card-header">
-      <div class="card-icon">🚗</div>
-      <div><div class="card-title">Daily Entry</div><div class="card-sub">OT + Conveyance + Food Allowance</div></div>
+      <div class="card-icon">✍️</div>
+      <div><div class="card-title">Manual Entry (Correction)</div><div class="card-sub">Use only if you missed punching in/out</div></div>
     </div>
-
+    <div class="field"><label>Date <span class="req">*</span></label><input type="date" id="f_date" onchange="calcManualPreview()"></div>
     <div class="field-row">
-      <div class="field"><label>OT Month <span class="req">*</span></label><input type="month" id="f_month"></div>
-      <div class="field"><label>Date <span class="req">*</span></label><input type="date" id="f_date" onchange="calcAllowances()"></div>
+      <div class="field"><label>Punch-In Time <span class="req">*</span></label><input type="time" id="f_punchin" onchange="calcManualPreview()"></div>
+      <div class="field"><label>Punch-Out Time <span class="req">*</span></label><input type="time" id="f_punchout" onchange="calcManualPreview()"></div>
     </div>
-
-    <div class="field-row">
-      <div class="field">
-        <label>Employee Name <span class="req">*</span></label>
-        <select id="f_name">
-          <option value="">— Select —</option>
-          <option>Prashant</option><option>Malachi</option><option>Anil New</option><option>Anil Old</option>
-          <option>DayaRam</option><option>Ramesh</option><option>Shiv Kumar</option><option>Lovekesh</option>
-          <option>Sudhir</option><option>Dilip</option><option>Vijay</option><option>Sandeep</option>
-          <option>Ashish</option><option>Ajay</option><option>Lekhraj</option><option>Shekhar</option>
-          <option>Ravi</option>
-        </select>
-      </div>
-      <div class="field"><label>Employee ID <span class="req">*</span></label><input type="text" id="f_empid" placeholder="EMP ID"></div>
+    <div class="ot-badge-row">
+      <span class="ot-badge-label">AUTO-CALCULATED OT</span>
+      <span class="ot-badge-val" id="manualOtPreview">0 hrs</span>
     </div>
-
-    <div class="field-row">
-      <div class="field"><label>Punch-In Time <span class="req">*</span></label><input type="time" id="f_punchin" onchange="calcAllowances()" placeholder="HH:MM"></div>
-      <div class="field"><label>Punch-Out Time <span class="req">*</span></label><input type="time" id="f_punchout" onchange="calcAllowances()" placeholder="HH:MM"></div>
-    </div>
-
     <div class="field">
-      <label>Total OT Hours <span class="req">*</span></label>
-      <div class="ot-wrap"><input type="number" id="f_ot_hrs" placeholder="0" min="0" step="0.5"><span class="ot-unit">hrs</span></div>
-    </div>
-
-    <div class="field">
-      <label>Reason for OT <span class="req">*</span></label>
+      <label>Reason for OT / Late-Early Duty <span class="req">*</span></label>
       <select id="f_reason">
         <option value="">— Select reason —</option>
         <optgroup label="Trip Extension">
@@ -209,10 +324,8 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
         </optgroup>
       </select>
     </div>
-
     <div class="field"><label>Remarks</label><textarea id="f_remarks" placeholder="Additional details (optional)..."></textarea></div>
 
-    <!-- AUTO-CALCULATED ALLOWANCE RESULT -->
     <div id="allow-result" class="allow-box hidden">
       <div class="allow-box-hdr">
         <span class="allow-box-title">Auto-Calculated Allowances</span>
@@ -220,51 +333,135 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
       </div>
       <div id="allow-rows"></div>
       <div class="allow-total-row">
-        <span class="allow-total-label">TOTAL ALLOWANCE TODAY</span>
+        <span class="allow-total-label">TOTAL ALLOWANCE</span>
         <span class="allow-total-val" id="allow-total">₹0</span>
       </div>
     </div>
 
-    <button class="btn-primary" onclick="submitEntry()">📤 Save & Send to Admin</button>
-    <button class="btn-secondary" onclick="clearForm()">Clear</button>
+    <button class="btn-primary" onclick="submitManualEntry()">📤 Save Manual Entry</button>
+    <button class="btn-secondary" onclick="clearManualForm()">Clear</button>
   </div>
-
 </div>
 
-<!-- ══ TAB 2: MONTHLY VIEW ══ -->
-<div class="page" id="page-monthly">
+<!-- ══ USER PAGE: MY ENTRIES ══ -->
+<div class="page" id="page-myentries">
+  <div class="filter-row" id="myMonthFilter"></div>
+  <div class="stat-row">
+    <div class="stat-card"><div class="stat-label">Entries</div><div class="stat-val" id="my-stat-entries">0</div></div>
+    <div class="stat-card"><div class="stat-label">OT Hrs</div><div class="stat-val" id="my-stat-ot" style="color:var(--org)">0</div></div>
+    <div class="stat-card"><div class="stat-label">Allowance</div><div class="stat-val" id="my-stat-allow" style="color:var(--green)">₹0</div></div>
+  </div>
+  <div class="sec-label">My Daily Log</div>
+  <div id="myEntryList"></div>
+</div>
 
-  <div class="filter-row" id="monthFilter"></div>
+<!-- ══ ADMIN PAGE: DASHBOARD ══ -->
+<div class="page" id="page-dashboard">
+  <div class="field" style="margin-bottom:10px">
+    <label>Filter by Driver</label>
+    <select id="adminUserFilter" class="select-inline" style="width:100%" onchange="renderDashboard()">
+      <option value="">— All Drivers (Combined) —</option>
+    </select>
+  </div>
+  <div class="filter-row" id="dashMonthFilter"></div>
 
-  <!-- SHARE CARD -->
   <div class="share-card">
     <div class="share-label">Monthly Summary</div>
-    <div class="share-title" id="shareTitle">—</div>
+    <div class="share-title" id="dashShareTitle">—</div>
     <div class="share-stats">
-      <div><div class="share-stat-val" id="s-ot">0</div><div class="share-stat-label">OT Hrs</div></div>
+      <div><div class="share-stat-val" id="d-ot">0</div><div class="share-stat-label">OT Hrs</div></div>
       <div class="share-divider"></div>
-      <div><div class="share-stat-val" id="s-allow">₹0</div><div class="share-stat-label">Allowances</div></div>
+      <div><div class="share-stat-val" id="d-allow">₹0</div><div class="share-stat-label">Allowances</div></div>
       <div class="share-divider"></div>
-      <div><div class="share-stat-val" id="s-days">0</div><div class="share-stat-label">OT Days</div></div>
+      <div><div class="share-stat-val" id="d-days">0</div><div class="share-stat-label">Entries</div></div>
       <div class="share-divider"></div>
-      <div><div class="share-stat-val" id="s-drivers">0</div><div class="share-stat-label">Drivers</div></div>
+      <div><div class="share-stat-val" id="d-drivers">0</div><div class="share-stat-label">Drivers</div></div>
     </div>
-    <button class="btn-share" onclick="shareMonthly()">📧 Share Monthly Report</button>
+    <button class="btn-share" onclick="switchTab('reports', document.querySelectorAll('.tab-btn')[2])">📊 Go to Reports</button>
   </div>
 
-  <div class="stat-row">
-    <div class="stat-card"><div class="stat-label">Entries</div><div class="stat-val" id="stat-entries">0</div></div>
-    <div class="stat-card"><div class="stat-label">OT Hrs</div><div class="stat-val" id="stat-ot" style="color:var(--org)">0</div></div>
-    <div class="stat-card"><div class="stat-label">Allowance</div><div class="stat-val" id="stat-allow" style="color:var(--green)">₹0</div></div>
-  </div>
-
-  <div class="sec-label">Daily Log</div>
-  <div id="entryList"></div>
-
+  <div class="sec-label">Daily Log — All Entries</div>
+  <div id="dashEntryList"></div>
 </div>
 
-<!-- ══ TAB 3: RULES ══ -->
+<!-- ══ ADMIN PAGE: USERS ══ -->
+<div class="page" id="page-users">
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon">➕</div>
+      <div><div class="card-title" id="userFormTitle">Create Driver Login</div><div class="card-sub">Admin-only: create ID & password for a driver</div></div>
+    </div>
+    <input type="hidden" id="u_editid">
+    <div class="field-row">
+      <div class="field"><label>Driver Name <span class="req">*</span></label><input type="text" id="u_name" placeholder="e.g. Prashant"></div>
+      <div class="field"><label>Employee ID <span class="req">*</span></label><input type="text" id="u_empid" placeholder="EMP ID"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Username <span class="req">*</span></label><input type="text" id="u_username" placeholder="login username"></div>
+      <div class="field"><label>Password <span class="req">*</span></label><input type="text" id="u_password" placeholder="login password"></div>
+    </div>
+    <button class="btn-primary" onclick="saveUser()">💾 Save Driver Login</button>
+    <button class="btn-secondary hidden" id="u_cancelBtn" onclick="cancelUserEdit()">Cancel Edit</button>
+  </div>
+
+  <div class="sec-label">All Drivers (<span id="userCount">0</span>)</div>
+  <div id="userList"></div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon">🔑</div>
+      <div><div class="card-title">Admin Password</div><div class="card-sub">Change your own admin login password</div></div>
+    </div>
+    <div class="field"><label>New Admin Password</label><input type="text" id="a_newpass" placeholder="Enter new password"></div>
+    <button class="btn-secondary" onclick="changeAdminPassword()">Update Admin Password</button>
+  </div>
+</div>
+
+<!-- ══ ADMIN PAGE: REPORTS ══ -->
+<div class="page" id="page-reports">
+  <div class="notif amber">📧 Reports are emailed to <strong id="adminEmailLabel"></strong>. Since this is a browser-based app with no backend server, "send" opens your email app with the summary pre-filled — the Excel file downloads automatically and you attach it before hitting send. Keep this app open on month-end to trigger it, or see the note below for full automation.</div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon">📊</div>
+      <div><div class="card-title">Monthly Excel Report</div><div class="card-sub">Combined + driver-wise breakup</div></div>
+    </div>
+    <div class="field"><label>Select Month</label><select id="reportMonth" class="select-inline" style="width:100%"></select></div>
+    <button class="btn-primary" onclick="downloadExcelReport(document.getElementById('reportMonth').value)">⬇️ Download Excel Report</button>
+    <button class="btn-primary btn-green" onclick="emailMonthlyReport(document.getElementById('reportMonth').value,false)">📧 Compose Email to Admin</button>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon">🤖</div>
+      <div><div class="card-title">Auto-Send at Month End</div><div class="card-sub">Best-effort automation from this browser</div></div>
+    </div>
+    <div class="toggle-row">
+      <div><div style="font-size:12px;font-weight:600">Enable auto-send</div><div style="font-size:10.5px;color:var(--sub)">Triggers automatically on the last day of the month, if this app is open in a browser that day</div></div>
+      <label class="switch"><input type="checkbox" id="autoSendToggle" onchange="toggleAutoSend()"><span class="slider"></span></label>
+    </div>
+    <div id="autoSendStatus" style="font-size:11px;color:var(--sub);margin-top:4px"></div>
+  </div>
+
+  <div class="card" style="background:var(--bluel);border-color:#90CAF9">
+    <div style="font-size:11.5px;color:#0D47A1;line-height:1.6">
+      💡 <strong>For fully unattended emailing</strong> (no need to keep a browser open, real attachment, exact time), this static file would need to talk to a small backend — e.g. a Google Apps Script Web App, EmailJS with attachment support, or a scheduled server job that reads the same data and sends SMTP mail. Happy to help you wire that up if you'd like — just let me know.
+    </div>
+  </div>
+</div>
+
+<!-- ══ RULES PAGE (shared) ══ -->
 <div class="page" id="page-rules">
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon">⏱️</div>
+      <div><div class="card-title">Duty Time & OT Rule</div><div class="card-sub">Fixed duty window for all drivers</div></div>
+    </div>
+    <div style="background:var(--orgl);border:1px solid var(--orgm);border-radius:8px;padding:10px 12px;font-size:12px;color:#4A1F00;line-height:1.6">
+      🕗 Standard duty time is <strong>8:00 AM to 8:00 PM</strong>.<br>
+      Any punch-in <strong>before 8:00 AM</strong> or punch-out <strong>after 8:00 PM</strong> is automatically counted as <strong>Overtime (OT)</strong> — no manual OT entry needed.
+    </div>
+  </div>
   <div class="card">
     <div class="card-header">
       <div class="card-icon">📋</div>
@@ -325,279 +522,429 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
 <!-- SUCCESS OVERLAY -->
 <div class="overlay hidden" id="successOverlay">
   <div class="success-card">
-    <div style="font-size:46px;margin-bottom:10px">✅</div>
-    <div style="font-size:17px;font-weight:800;color:var(--text);margin-bottom:6px">Entry Saved!</div>
-    <div style="font-size:12px;color:var(--sub);line-height:1.5;margin-bottom:18px">OT & allowances logged. Your email app will open — please send to notify Admin.</div>
+    <div style="font-size:46px;margin-bottom:10px" id="successIcon">✅</div>
+    <div style="font-size:17px;font-weight:800;color:var(--text);margin-bottom:6px" id="successTitle">Entry Saved!</div>
+    <div style="font-size:12px;color:var(--sub);line-height:1.5;margin-bottom:18px" id="successMsg">OT & allowances logged.</div>
     <button class="btn-primary" onclick="document.getElementById('successOverlay').classList.add('hidden')">Done</button>
   </div>
 </div>
 
+<!-- EDIT ENTRY MODAL (admin) -->
+<div class="modal-overlay hidden" id="editModal">
+  <div class="modal-card">
+    <div class="modal-title"><span>Edit Entry</span><button class="modal-close" onclick="closeEditModal()">✕</button></div>
+    <input type="hidden" id="e_id">
+    <div class="field"><label>Driver</label><input type="text" id="e_name" disabled></div>
+    <div class="field-row">
+      <div class="field"><label>Date</label><input type="date" id="e_date" onchange="recalcEditPreview()"></div>
+      <div class="field"><label>Day</label><input type="text" id="e_dayname" disabled></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Punch-In</label><input type="time" id="e_punchin" onchange="recalcEditPreview()"></div>
+      <div class="field"><label>Punch-Out</label><input type="time" id="e_punchout" onchange="recalcEditPreview()"></div>
+    </div>
+    <div class="field">
+      <label>Total OT Hours <span style="font-weight:400;color:var(--sub)">(auto-calculated — override if needed)</span></label>
+      <div class="ot-wrap"><input type="number" id="e_othrs" step="0.25" min="0"><span class="ot-unit">hrs</span></div>
+    </div>
+    <div class="field"><label>Total Allowance (₹) <span style="font-weight:400;color:var(--sub)">(auto — override if needed)</span></label><input type="number" id="e_allow" step="1" min="0"></div>
+    <div class="field"><label>Reason</label><input type="text" id="e_reason"></div>
+    <div class="field"><label>Remarks</label><textarea id="e_remarks"></textarea></div>
+    <div class="field">
+      <label>Punch Locations <span style="font-weight:400;color:var(--sub)">(captured automatically, view-only)</span></label>
+      <div id="e_locations" style="font-size:11.5px;color:var(--sub);line-height:1.7"></div>
+    </div>
+    <button class="btn-primary" onclick="saveEditedEntry()">💾 Save Changes</button>
+    <button class="btn-secondary btn-red" style="color:var(--red);border-color:#FDA29B" onclick="deleteEntryFromModal()">🗑️ Delete Entry</button>
+  </div>
+</div>
+
 <script>
+// ══════════════════════ CONFIG / STORAGE ══════════════════════
 const adminEmail = 'ram.ratan@rodicconsultants.com';
-let entries = [];
-let activeMonth = '';
+const DUTY_START_MIN = 8*60;   // 8:00 AM
+const DUTY_END_MIN   = 20*60;  // 8:00 PM
+const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+
+const LS_USERS='ot_users_v1', LS_ADMIN='ot_admin_v1', LS_ENTRIES='ot_entries_v1',
+      LS_ACTIVE='ot_active_punch_v1_', LS_SESSION='ot_session_v1', LS_AUTOSEND='ot_autosend_v1',
+      LS_SENTLOG='ot_sent_months_v1';
+
+function loadJSON(key,def){ try{ const v=localStorage.getItem(key); return v===null?def:JSON.parse(v);}catch(e){return def;} }
+function saveJSON(key,val){ localStorage.setItem(key, JSON.stringify(val)); }
+
+let users   = loadJSON(LS_USERS, []);
+let admin   = loadJSON(LS_ADMIN, {username:'admin', password:'admin@123'});
+let entries = loadJSON(LS_ENTRIES, []);
+saveJSON(LS_ADMIN, admin);
+
+let session = loadJSON(LS_SESSION, null); // {role, username, name, empid}
+let loginRole = 'user';
+let activeDashMonth = '', activeMyMonth = '';
 
 const today = new Date();
 const todayStr = today.toISOString().split('T')[0];
 const monthStr = todayStr.slice(0,7);
 
-document.getElementById('todayBadge').textContent =
-  today.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
-document.getElementById('f_date').value = todayStr;
-document.getElementById('f_month').value = monthStr;
+document.getElementById('adminEmailLabel').textContent = adminEmail;
 
-// ── TAB SWITCH ──
-function switchTab(tab, btn) {
+// ══════════════════════ LOGIN ══════════════════════
+function setLoginRole(r){
+  loginRole = r;
+  document.getElementById('roleTabUser').classList.toggle('active', r==='user');
+  document.getElementById('roleTabAdmin').classList.toggle('active', r==='admin');
+  document.getElementById('loginHint').innerHTML = r==='admin'
+    ? '🔑 <strong>Admin:</strong> default login is <strong>admin / admin@123</strong> (change it after first login from Users tab → Admin Password).'
+    : '🚗 <strong>Drivers:</strong> use the username &amp; password created for you by Admin. Contact Admin if you don\'t have login details yet.';
+  document.getElementById('loginErr').classList.add('hidden');
+}
+
+function doLogin(){
+  const u = document.getElementById('loginUsername').value.trim();
+  const p = document.getElementById('loginPassword').value;
+  const errEl = document.getElementById('loginErr');
+  if(!u || !p){ errEl.textContent='Please enter username and password.'; errEl.classList.remove('hidden'); return; }
+
+  if(loginRole==='admin'){
+    if(u===admin.username && p===admin.password){
+      session = {role:'admin', username:u, name:'Admin'};
+    } else { errEl.textContent='Incorrect admin username or password.'; errEl.classList.remove('hidden'); return; }
+  } else {
+    const match = users.find(x=>x.username===u && x.password===p);
+    if(match){ session = {role:'user', username:u, name:match.name, empid:match.empid}; }
+    else { errEl.textContent='Incorrect username or password. Ask Admin to check your login.'; errEl.classList.remove('hidden'); return; }
+  }
+  saveJSON(LS_SESSION, session);
+  enterApp();
+}
+
+function doLogout(){
+  session = null;
+  localStorage.removeItem(LS_SESSION);
+  document.getElementById('appScreen').classList.add('hidden');
+  document.getElementById('loginScreen').classList.remove('hidden');
+  document.getElementById('loginUsername').value='';
+  document.getElementById('loginPassword').value='';
+}
+
+function enterApp(){
+  document.getElementById('loginScreen').classList.add('hidden');
+  document.getElementById('appScreen').classList.remove('hidden');
+  document.getElementById('todayBadge').textContent = today.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
+  document.getElementById('sessionNameLabel').textContent = session.role==='admin' ? 'Admin — '+session.name : session.name+' (Driver)';
+  buildTabs();
+  if(session.role==='user'){
+    document.getElementById('f_date').value = todayStr;
+    renderPunchUI();
+    renderMyEntries();
+    switchTabById('punch');
+  } else {
+    populateUserFilterDropdown();
+    populateReportMonthDropdown();
+    renderDashboard();
+    renderUserList();
+    initAutoSendUI();
+    checkAutoSendTrigger();
+    switchTabById('dashboard');
+  }
+}
+
+// resume session on load
+if(session){ enterApp(); }
+
+// ══════════════════════ TABS ══════════════════════
+function buildTabs(){
+  const nav = document.getElementById('tabnav');
+  if(session.role==='user'){
+    nav.style.gridTemplateColumns='1fr 1fr 1fr';
+    nav.innerHTML = `
+      <button class="tab-btn active" onclick="switchTab('punch',this)">⏱️ Punch</button>
+      <button class="tab-btn" onclick="switchTab('myentries',this)">📊 My Entries</button>
+      <button class="tab-btn" onclick="switchTab('rules',this)">📋 Rules</button>`;
+  } else {
+    nav.style.gridTemplateColumns='1fr 1fr 1fr 1fr';
+    nav.innerHTML = `
+      <button class="tab-btn active" onclick="switchTab('dashboard',this)">📊 Dashboard</button>
+      <button class="tab-btn" onclick="switchTab('users',this)">👥 Users</button>
+      <button class="tab-btn" onclick="switchTab('reports',this)">📧 Reports</button>
+      <button class="tab-btn" onclick="switchTab('rules',this)">📋 Rules</button>`;
+  }
+}
+
+function switchTab(tab, btn){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('page-'+tab).classList.add('active');
-  btn.classList.add('active');
-  if(tab==='monthly') renderMonthly();
+  if(btn) btn.classList.add('active');
+  if(tab==='myentries') renderMyEntries();
+  if(tab==='dashboard') renderDashboard();
+  if(tab==='users') renderUserList();
+}
+function switchTabById(tab){
+  const idx = {punch:0,myentries:1,rules:2,dashboard:0,users:1,reports:2}[tab];
+  const btn = document.querySelectorAll('.tab-btn')[idx];
+  switchTab(tab, btn);
 }
 
-// ── ALLOWANCE CALCULATION ENGINE ──
-function calcAllowances() {
-  const dateVal  = document.getElementById('f_date').value;
-  const punchIn  = document.getElementById('f_punchin').value;
-  const punchOut = document.getElementById('f_punchout').value;
+// ══════════════════════ LIVE CLOCK ══════════════════════
+function tickClock(){
+  if(!session || session.role!=='user') return;
+  const n = new Date();
+  document.getElementById('liveClock').textContent = n.toLocaleTimeString('en-IN',{hour12:true});
+  document.getElementById('liveDate').textContent = n.toLocaleDateString('en-IN',{weekday:'long', day:'numeric', month:'long', year:'numeric'});
+}
+setInterval(tickClock, 1000); tickClock();
 
-  if (!dateVal || !punchIn || !punchOut) {
-    document.getElementById('allow-result').classList.add('hidden');
-    return;
-  }
-
-  const dayOfWeek = new Date(dateVal+'T00:00:00').getDay(); // 0=Sun,6=Sat
+// ══════════════════════ OT + ALLOWANCE CALC ENGINE ══════════════════════
+function calcForEntry(dateVal, punchIn, punchOut){
+  const dayOfWeek = new Date(dateVal+'T00:00:00').getDay();
   const isSunday  = dayOfWeek === 0;
 
   const [ih, im] = punchIn.split(':').map(Number);
   const [oh, om] = punchOut.split(':').map(Number);
-  const piMins   = ih * 60 + im;
-  const poMins   = oh * 60 + om;
+  let piMins = ih*60+im, poMins = oh*60+om;
+  if(poMins < piMins) poMins += 24*60; // overnight shift safety
 
-  const earlyIn   = piMins < 7*60+30;  // before 07:30
-  const late22    = poMins >= 22*60;   // after or at 22:00
-  const late20sun = poMins >= 20*60;   // after 20:00 (Sunday only)
+  // AUTO OT: anything outside the 8:00–20:00 duty window
+  const earlyOtMins = Math.max(0, DUTY_START_MIN - piMins);
+  const lateOtMins  = Math.max(0, poMins - DUTY_END_MIN);
+  const otHours = Math.round(((earlyOtMins + lateOtMins)/60)*100)/100;
+
+  const earlyIn   = piMins < 7*60+30;
+  const late22    = poMins >= 22*60;
+  const late20sun = poMins >= 20*60;
 
   let allowances = [];
   let total = 0;
 
-  if (isSunday) {
-    // SUNDAY RULES
-    if (earlyIn) {
-      allowances.push({icon:'🌅',label:'Early Conveyance',cond:'Punch-in before 07:30',amt:100,earned:true});
-      allowances.push({icon:'🥐',label:'Breakfast',cond:'Punch-in before 07:30',amt:50,earned:true});
-      total += 150;
-    } else {
-      allowances.push({icon:'🌅',label:'Early Conveyance',cond:'Punch-in before 07:30 (not applicable)',amt:100,earned:false});
-      allowances.push({icon:'🥐',label:'Breakfast',cond:'Punch-in before 07:30 (not applicable)',amt:50,earned:false});
-    }
-    if (late20sun) {
-      allowances.push({icon:'🍱',label:'Afternoon Conveyance + Lunch',cond:'Punch-out after 08:00 PM',amt:200,earned:true});
-      total += 200;
-    } else {
-      allowances.push({icon:'🍱',label:'Afternoon Conveyance + Lunch',cond:'Punch-out after 08:00 PM (not applicable)',amt:200,earned:false});
-    }
-    if (late22) {
-      allowances.push({icon:'🍽️',label:'Dinner',cond:'Punch-out after 10:00 PM',amt:100,earned:true});
-      total += 100;
-    } else {
-      allowances.push({icon:'🍽️',label:'Dinner',cond:'Punch-out after 10:00 PM (not applicable)',amt:100,earned:false});
-    }
+  if (isSunday){
+    if(earlyIn){ allowances.push({icon:'🌅',label:'Early Conveyance',cond:'Punch-in before 07:30',amt:100,earned:true}); allowances.push({icon:'🥐',label:'Breakfast',cond:'Punch-in before 07:30',amt:50,earned:true}); total+=150; }
+    else { allowances.push({icon:'🌅',label:'Early Conveyance',cond:'Punch-in before 07:30 (not applicable)',amt:100,earned:false}); allowances.push({icon:'🥐',label:'Breakfast',cond:'Punch-in before 07:30 (not applicable)',amt:50,earned:false}); }
+    if(late20sun){ allowances.push({icon:'🍱',label:'Afternoon Conveyance + Lunch',cond:'Punch-out after 08:00 PM',amt:200,earned:true}); total+=200; }
+    else { allowances.push({icon:'🍱',label:'Afternoon Conveyance + Lunch',cond:'Punch-out after 08:00 PM (not applicable)',amt:200,earned:false}); }
+    if(late22){ allowances.push({icon:'🍽️',label:'Dinner',cond:'Punch-out after 10:00 PM',amt:100,earned:true}); total+=100; }
+    else { allowances.push({icon:'🍽️',label:'Dinner',cond:'Punch-out after 10:00 PM (not applicable)',amt:100,earned:false}); }
   } else {
-    // MON–SAT RULES
-    if (earlyIn) {
-      allowances.push({icon:'🌅',label:'Early Conveyance',cond:'Punch-in before 07:30',amt:100,earned:true});
-      allowances.push({icon:'🥐',label:'Breakfast',cond:'Punch-in before 07:30',amt:50,earned:true});
-      total += 150;
-    } else {
-      allowances.push({icon:'🌅',label:'Early Conveyance',cond:'Punch-in before 07:30 (not applicable)',amt:100,earned:false});
-      allowances.push({icon:'🥐',label:'Breakfast',cond:'Punch-in before 07:30 (not applicable)',amt:50,earned:false});
-    }
-    if (late22) {
-      allowances.push({icon:'🌙',label:'Late Conveyance',cond:'Punch-out after 10:00 PM',amt:100,earned:true});
-      allowances.push({icon:'🍽️',label:'Dinner',cond:'Punch-out after 10:00 PM',amt:100,earned:true});
-      total += 200;
-    } else {
-      allowances.push({icon:'🌙',label:'Late Conveyance',cond:'Punch-out after 10:00 PM (not applicable)',amt:100,earned:false});
-      allowances.push({icon:'🍽️',label:'Dinner',cond:'Punch-out after 10:00 PM (not applicable)',amt:100,earned:false});
-    }
+    if(earlyIn){ allowances.push({icon:'🌅',label:'Early Conveyance',cond:'Punch-in before 07:30',amt:100,earned:true}); allowances.push({icon:'🥐',label:'Breakfast',cond:'Punch-in before 07:30',amt:50,earned:true}); total+=150; }
+    else { allowances.push({icon:'🌅',label:'Early Conveyance',cond:'Punch-in before 07:30 (not applicable)',amt:100,earned:false}); allowances.push({icon:'🥐',label:'Breakfast',cond:'Punch-in before 07:30 (not applicable)',amt:50,earned:false}); }
+    if(late22){ allowances.push({icon:'🌙',label:'Late Conveyance',cond:'Punch-out after 10:00 PM',amt:100,earned:true}); allowances.push({icon:'🍽️',label:'Dinner',cond:'Punch-out after 10:00 PM',amt:100,earned:true}); total+=200; }
+    else { allowances.push({icon:'🌙',label:'Late Conveyance',cond:'Punch-out after 10:00 PM (not applicable)',amt:100,earned:false}); allowances.push({icon:'🍽️',label:'Dinner',cond:'Punch-out after 10:00 PM (not applicable)',amt:100,earned:false}); }
   }
 
-  // Render
-  const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-  document.getElementById('day-badge').textContent = dayNames[dayOfWeek];
-  document.getElementById('allow-rows').innerHTML = allowances.map(a=>`
+  return { otHours, allowances, earnedAllowances: allowances.filter(a=>a.earned), total, isSunday, dayName: dayNames[dayOfWeek] };
+}
+
+function renderAllowanceBox(calc, containerPrefix){
+  document.getElementById('day-badge').textContent = calc.dayName;
+  document.getElementById('allow-rows').innerHTML = calc.allowances.map(a=>`
     <div class="allow-row ${a.earned?'earned':'not-earned'}">
       <div><span class="allow-icon">${a.icon}</span><span class="allow-label">${a.label}</span><div class="allow-cond">${a.cond}</div></div>
       <div class="allow-amt ${a.earned?'':'zero'}">₹${a.amt}</div>
     </div>`).join('');
-  document.getElementById('allow-total').textContent = '₹'+total;
+  document.getElementById('allow-total').textContent = '₹'+calc.total;
   document.getElementById('allow-result').classList.remove('hidden');
-
-  return {allowances: allowances.filter(a=>a.earned), total, isSunday, dayName: dayNames[dayOfWeek]};
 }
 
-// ── SUBMIT ──
-function submitEntry() {
-  const month   = document.getElementById('f_month').value;
+// ══════════════════════ LOCATION CAPTURE ══════════════════════
+function getLocation(){
+  return new Promise((resolve)=>{
+    if(!navigator.geolocation){ resolve(null); return; }
+    navigator.geolocation.getCurrentPosition(
+      async pos=>{
+        const lat = +pos.coords.latitude.toFixed(6);
+        const lng = +pos.coords.longitude.toFixed(6);
+        const accuracy = Math.round(pos.coords.accuracy||0);
+        let address = '';
+        try{
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=16&addressdetails=0`);
+          if(res.ok){ const data = await res.json(); address = data.display_name || ''; }
+        }catch(e){ /* reverse geocoding is best-effort only */ }
+        resolve({lat, lng, accuracy, address, capturedAt: new Date().toISOString()});
+      },
+      err=>{ resolve(null); },
+      {enableHighAccuracy:true, timeout:8000, maximumAge:0}
+    );
+  });
+}
+function shortAddr(addr){ if(!addr) return ''; return addr.length>55 ? addr.slice(0,55)+'…' : addr; }
+function mapLink(loc){ return loc ? `https://www.google.com/maps?q=${loc.lat},${loc.lng}` : ''; }
+function locChipHTML(loc, label){
+  if(!loc) return `<span class="pill pill-gray">📍 ${label}: unavailable</span>`;
+  return `<a href="${mapLink(loc)}" target="_blank" class="pill pill-blue" style="text-decoration:none">📍 ${label}: ${loc.address?shortAddr(loc.address.split(',').slice(0,2).join(',')):(loc.lat+', '+loc.lng)}</a>`;
+}
+
+// ══════════════════════ PUNCH IN / OUT ══════════════════════
+function activePunchKey(){ return LS_ACTIVE + session.username; }
+function getActivePunch(){ return loadJSON(activePunchKey(), null); }
+
+function renderPunchUI(){
+  const active = getActivePunch();
+  const pill = document.getElementById('punchStatusPill');
+  if(active){
+    pill.textContent = 'Punched In at '+active.punchIn;
+    pill.className = 'punch-status-pill in';
+    document.getElementById('btnPunchIn').disabled = true;
+    document.getElementById('btnPunchOut').disabled = false;
+  } else {
+    pill.textContent = 'Not Punched In';
+    pill.className = 'punch-status-pill out';
+    document.getElementById('btnPunchIn').disabled = false;
+    document.getElementById('btnPunchOut').disabled = true;
+  }
+
+  const todaysEntry = entries.filter(e=>e.username===session.username && e.date===todayStr).sort((a,b)=>b.id-a.id)[0];
+  const card = document.getElementById('todayEntryCard');
+  if(todaysEntry){
+    card.style.display='block';
+    document.getElementById('todayEntrySub').textContent = todaysEntry.dayName+' · '+todayStr;
+    document.getElementById('todayEntryBody').innerHTML = `
+      <div class="pills" style="margin-top:0">
+        <span class="pill pill-blue">In: ${todaysEntry.punchIn}</span>
+        <span class="pill pill-blue">Out: ${todaysEntry.punchOut}</span>
+        <span class="pill pill-org">OT: ${todaysEntry.ot_hrs}h</span>
+        <span class="pill pill-green">Allowance: ₹${todaysEntry.totalAllowance}</span>
+      </div>
+      <div class="pills">
+        ${locChipHTML(todaysEntry.locationIn,'In')}
+        ${locChipHTML(todaysEntry.locationOut,'Out')}
+      </div>`;
+  } else {
+    card.style.display='none';
+  }
+}
+
+async function punchIn(){
+  const pinBtn = document.getElementById('btnPunchIn');
+  const poutBtn = document.getElementById('btnPunchOut');
+  const pill = document.getElementById('punchStatusPill');
+  pinBtn.disabled = true; poutBtn.disabled = true;
+  pill.textContent = '📍 Getting location...'; pill.className = 'punch-status-pill out';
+
+  const loc = await getLocation();
+  const now = new Date();
+  const timeStr = now.toTimeString().slice(0,5);
+  saveJSON(activePunchKey(), {date: todayStr, punchIn: timeStr, locationIn: loc});
+  renderPunchUI();
+  showSuccess('⏱️','Punched In!', 'Recorded at '+timeStr+(loc?' · 📍 '+(loc.address?shortAddr(loc.address):'location captured'):' · location unavailable (permission denied or GPS off)')+'. Don\'t forget to Punch Out at the end of your duty.');
+}
+
+async function punchOut(){
+  const active = getActivePunch();
+  if(!active){ alert('Please Punch In first.'); return; }
+  const pinBtn = document.getElementById('btnPunchIn');
+  const poutBtn = document.getElementById('btnPunchOut');
+  const pill = document.getElementById('punchStatusPill');
+  pinBtn.disabled = true; poutBtn.disabled = true;
+  pill.textContent = '📍 Getting location...'; pill.className = 'punch-status-pill in';
+
+  const loc = await getLocation();
+  const now = new Date();
+  const punchOutTime = now.toTimeString().slice(0,5);
+  const calc = calcForEntry(active.date, active.punchIn, punchOutTime);
+
+  const entry = {
+    id: Date.now(), username: session.username, name: session.name, empid: session.empid,
+    month: active.date.slice(0,7), date: active.date,
+    punchIn: active.punchIn, punchOut: punchOutTime,
+    ot_hrs: calc.otHours, reason: 'Auto (Punch In/Out)', remarks: '',
+    allowances: calc.earnedAllowances, totalAllowance: calc.total, dayName: calc.dayName,
+    source: 'punch', locationIn: active.locationIn || null, locationOut: loc
+  };
+  entries.push(entry);
+  saveJSON(LS_ENTRIES, entries);
+  localStorage.removeItem(activePunchKey());
+  renderPunchUI();
+  showSuccess('✅','Punched Out!', `OT: ${calc.otHours} hrs · Allowance: ₹${calc.total}.`+(loc?' · 📍 location captured':' · location unavailable')+' Entry saved automatically.');
+}
+
+// ══════════════════════ MANUAL ENTRY (USER, correction) ══════════════════════
+function calcManualPreview(){
+  const dateVal  = document.getElementById('f_date').value;
+  const punchIn  = document.getElementById('f_punchin').value;
+  const punchOut = document.getElementById('f_punchout').value;
+  if(!dateVal || !punchIn || !punchOut){
+    document.getElementById('allow-result').classList.add('hidden');
+    document.getElementById('manualOtPreview').textContent = '0 hrs';
+    return null;
+  }
+  const calc = calcForEntry(dateVal, punchIn, punchOut);
+  document.getElementById('manualOtPreview').textContent = calc.otHours + ' hrs';
+  renderAllowanceBox(calc);
+  return calc;
+}
+
+function submitManualEntry(){
   const date    = document.getElementById('f_date').value;
-  const name    = document.getElementById('f_name').value;
-  const empid   = document.getElementById('f_empid').value.trim();
   const punchIn = document.getElementById('f_punchin').value;
   const punchOut= document.getElementById('f_punchout').value;
-  const ot_hrs  = document.getElementById('f_ot_hrs').value;
   const reason  = document.getElementById('f_reason').value;
   const remarks = document.getElementById('f_remarks').value.trim();
 
-  if(!month||!date||!name||!empid||!punchIn||!punchOut||!ot_hrs||!reason){
-    alert('Please fill all mandatory fields (*)'); return;
-  }
+  if(!date||!punchIn||!punchOut||!reason){ alert('Please fill all mandatory fields (*)'); return; }
 
-  const calc = calcAllowances();
+  const calc = calcManualPreview();
   const entry = {
-    month,date,name,empid,punchIn,punchOut,
-    ot_hrs:parseFloat(ot_hrs),reason,remarks,
-    allowances: calc ? calc.allowances : [],
-    totalAllowance: calc ? calc.total : 0,
-    dayName: calc ? calc.dayName : '',
-    id:Date.now()
+    id: Date.now(), username: session.username, name: session.name, empid: session.empid,
+    month: date.slice(0,7), date, punchIn, punchOut,
+    ot_hrs: calc.otHours, reason, remarks,
+    allowances: calc.earnedAllowances, totalAllowance: calc.total, dayName: calc.dayName,
+    source: 'manual'
   };
   entries.push(entry);
+  saveJSON(LS_ENTRIES, entries);
+  clearManualForm();
+  renderPunchUI();
+  showSuccess('✅','Manual Entry Saved!', `OT: ${calc.otHours} hrs · Allowance: ₹${calc.total}.`);
+}
 
-  // Build email
-  const dateLabel  = new Date(date+'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'long',year:'numeric'});
-  const monthLabel = new Date(month+'-01').toLocaleDateString('en-IN',{month:'long',year:'numeric'});
-  const allowLines = entry.allowances.length
-    ? entry.allowances.map(a=>`  ${a.icon} ${a.label.padEnd(30)}: ₹${a.amt}`).join('\n')
-    : '  None';
+function clearManualForm(){
+  document.getElementById('f_date').value = todayStr;
+  document.getElementById('f_punchin').value = '';
+  document.getElementById('f_punchout').value = '';
+  document.getElementById('f_reason').selectedIndex = 0;
+  document.getElementById('f_remarks').value = '';
+  document.getElementById('allow-result').classList.add('hidden');
+}
 
-  const subject = encodeURIComponent(`Daily OT Entry — ${name} | ${dateLabel}`);
-  const body = encodeURIComponent(
-`Hi Ram Ratan,
-
-Daily OT & Allowance entry for your records:
-
-══════════════════════════════════════
-  DAILY ENTRY — RODIC CONSULTANTS
-══════════════════════════════════════
-  Employee Name   : ${name}
-  Employee ID     : ${empid}
-  Month           : ${monthLabel}
-  Date            : ${dateLabel} (${entry.dayName})
-  Punch-In        : ${punchIn}
-  Punch-Out       : ${punchOut}
-  Total OT        : ${ot_hrs} hrs
-  Reason          : ${reason}
-  Remarks         : ${remarks||'—'}
-──────────────────────────────────────
-  ALLOWANCES EARNED
-──────────────────────────────────────
-${allowLines}
-──────────────────────────────────────
-  TOTAL ALLOWANCE : ₹${entry.totalAllowance}
-══════════════════════════════════════
-
-Submitted via Driver OT Module
-Rodic Consultants Pvt. Ltd.`);
-
-  window.location.href = `mailto:${adminEmail}?subject=${subject}&body=${body}`;
+function showSuccess(icon, title, msg){
+  document.getElementById('successIcon').textContent = icon;
+  document.getElementById('successTitle').textContent = title;
+  document.getElementById('successMsg').textContent = msg;
   document.getElementById('successOverlay').classList.remove('hidden');
-  clearForm();
 }
 
-// ── MONTHLY SHARE ──
-function shareMonthly() {
-  const filtered = entries.filter(e=>e.month===activeMonth);
-  if(!filtered.length){ alert('No entries for this month.'); return; }
+// ══════════════════════ MY ENTRIES (USER) ══════════════════════
+function renderMyEntries(){
+  const mine = entries.filter(e=>e.username===session.username);
+  const months = [...new Set([monthStr, ...mine.map(e=>e.month)])].sort().reverse();
+  if(!activeMyMonth || !months.includes(activeMyMonth)) activeMyMonth = months[0];
 
-  const monthLabel   = new Date(activeMonth+'-01').toLocaleDateString('en-IN',{month:'long',year:'numeric'});
-  const totalOT      = filtered.reduce((s,e)=>s+e.ot_hrs,0).toFixed(1);
-  const totalAllow   = filtered.reduce((s,e)=>s+e.totalAllowance,0);
-  const uniqueDrivers= [...new Set(filtered.map(e=>e.name))];
-
-  const driverBreakup = uniqueDrivers.map(n=>{
-    const de = filtered.filter(e=>e.name===n);
-    const hrs = de.reduce((s,e)=>s+e.ot_hrs,0).toFixed(1);
-    const allow = de.reduce((s,e)=>s+e.totalAllowance,0);
-    return `  ${n.padEnd(14)}: OT ${hrs}h  |  Allowance ₹${allow}  |  Days: ${de.length}`;
-  }).join('\n');
-
-  const dailyLog = filtered
-    .sort((a,b)=>a.date.localeCompare(b.date))
-    .map(e=>{
-      const d = new Date(e.date+'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short'});
-      const aNames = e.allowances.map(a=>a.label.split(' ')[0]).join('+') || 'None';
-      return `  ${d}  ${e.name.padEnd(12)}  In:${e.punchIn}  Out:${e.punchOut}  OT:${e.ot_hrs}h  Allow:₹${e.totalAllowance}`;
-    }).join('\n');
-
-  const subject = encodeURIComponent(`Monthly OT & Allowance Report — ${monthLabel}`);
-  const body = encodeURIComponent(
-`Hi Ram Ratan,
-
-Please find the Monthly OT & Allowance Report:
-
-══════════════════════════════════════
-  MONTHLY REPORT — RODIC CONSULTANTS
-  Month: ${monthLabel}
-══════════════════════════════════════
-
-SUMMARY
-  Total OT Hours      : ${totalOT} hrs
-  Total Allowances    : ₹${totalAllow}
-  Total OT Days       : ${filtered.length}
-  Drivers with OT     : ${uniqueDrivers.length}
-
-DRIVER-WISE BREAKUP
-${driverBreakup}
-
-DAILY LOG (Date | Name | Punch-In | Punch-Out | OT | Allowance)
-${dailyLog}
-
-══════════════════════════════════════
-Driver OT Module — Rodic Consultants Pvt. Ltd.`);
-
-  window.location.href = `mailto:${adminEmail}?subject=${subject}&body=${body}`;
-}
-
-// ── RENDER MONTHLY ──
-function renderMonthly() {
-  const months = [...new Set([monthStr,...entries.map(e=>e.month)])].sort().reverse();
-  if(!activeMonth||!months.includes(activeMonth)) activeMonth=months[0];
-
-  document.getElementById('monthFilter').innerHTML = months.map(m=>{
+  document.getElementById('myMonthFilter').innerHTML = months.map(m=>{
     const label = new Date(m+'-01').toLocaleDateString('en-IN',{month:'short',year:'numeric'});
-    return `<button class="month-chip ${m===activeMonth?'active':''}" onclick="setMonth('${m}')">${label}</button>`;
+    return `<button class="month-chip ${m===activeMyMonth?'active':''}" onclick="setMyMonth('${m}')">${label}</button>`;
   }).join('');
 
-  const filtered = entries.filter(e=>e.month===activeMonth);
-  const totalOT    = filtered.reduce((s,e)=>s+e.ot_hrs,0);
-  const totalAllow = filtered.reduce((s,e)=>s+e.totalAllowance,0);
-  const drivers    = [...new Set(filtered.map(e=>e.name))].length;
-  const monthLabel = new Date(activeMonth+'-01').toLocaleDateString('en-IN',{month:'long',year:'numeric'});
+  const filtered = mine.filter(e=>e.month===activeMyMonth).sort((a,b)=>b.date.localeCompare(a.date));
+  document.getElementById('my-stat-entries').textContent = filtered.length;
+  document.getElementById('my-stat-ot').textContent = filtered.reduce((s,e)=>s+e.ot_hrs,0).toFixed(1);
+  document.getElementById('my-stat-allow').textContent = '₹'+filtered.reduce((s,e)=>s+e.totalAllowance,0);
 
-  document.getElementById('stat-entries').textContent = filtered.length;
-  document.getElementById('stat-ot').textContent      = totalOT.toFixed(1);
-  document.getElementById('stat-allow').textContent   = '₹'+totalAllow;
-  document.getElementById('s-ot').textContent         = totalOT.toFixed(1);
-  document.getElementById('s-allow').textContent      = '₹'+totalAllow;
-  document.getElementById('s-days').textContent       = filtered.length;
-  document.getElementById('s-drivers').textContent    = drivers;
-  document.getElementById('shareTitle').textContent   = monthLabel;
+  const listEl = document.getElementById('myEntryList');
+  if(!filtered.length){ listEl.innerHTML = `<div class="empty"><div class="empty-icon">📋</div><div class="empty-title">No entries yet</div></div>`; return; }
 
-  const listEl = document.getElementById('entryList');
-  if(!filtered.length){
-    listEl.innerHTML=`<div class="empty"><div class="empty-icon">📋</div><div class="empty-title">No entries yet</div></div>`;
-    return;
-  }
+  listEl.innerHTML = filtered.map(e=>entryCardHTML(e, false)).join('');
+}
+function setMyMonth(m){ activeMyMonth=m; renderMyEntries(); }
 
-  listEl.innerHTML = filtered.sort((a,b)=>b.date.localeCompare(a.date)).map(e=>{
-    const d = new Date(e.date+'T00:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'});
-    const allowPills = e.allowances.map(a=>`<span class="pill pill-green">${a.icon} ₹${a.amt}</span>`).join('');
-    return `<div class="entry-card">
+// ══════════════════════ ENTRY CARD (shared render) ══════════════════════
+function entryCardHTML(e, showEdit){
+  const d = new Date(e.date+'T00:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'});
+  const allowPills = (e.allowances||[]).map(a=>`<span class="pill pill-green">${a.icon} ₹${a.amt}</span>`).join('');
+  return `<div class="entry-card">
       <div class="entry-top">
         <div>
           <div class="entry-name">${e.name}</div>
-          <div class="entry-meta">${e.empid} · ${d} · ${e.dayName||''}</div>
+          <div class="entry-meta">${e.empid||''} · ${d} · ${e.dayName||''}</div>
           <div class="entry-meta">In: ${e.punchIn} &nbsp;|&nbsp; Out: ${e.punchOut}</div>
         </div>
         <div class="entry-amt">
@@ -608,21 +955,343 @@ function renderMonthly() {
       <div class="pills">
         <span class="pill pill-org">OT: ${e.ot_hrs}h</span>
         ${allowPills}
-        ${e.allowances.length===0?'<span class="pill pill-gray">No allowance</span>':''}
+        ${(!e.allowances||e.allowances.length===0)?'<span class="pill pill-gray">No allowance</span>':''}
+        <span class="pill pill-amber">${e.source==='punch'?'Via Punch':'Manual'}</span>
       </div>
+      ${(e.locationIn||e.locationOut)?`<div class="pills">${locChipHTML(e.locationIn,'In')}${locChipHTML(e.locationOut,'Out')}</div>`:''}
       ${e.remarks?`<div style="font-size:11px;color:var(--sub);margin-top:7px">📝 ${e.remarks}</div>`:''}
+      ${showEdit?`<div class="entry-actions">
+        <button class="icon-btn edit" onclick="openEditModal(${e.id})">✏️ Edit</button>
+        <button class="icon-btn del" onclick="deleteEntry(${e.id})">🗑️ Delete</button>
+      </div>`:''}
     </div>`;
+}
+
+// ══════════════════════ ADMIN: DASHBOARD ══════════════════════
+function populateUserFilterDropdown(){
+  const sel = document.getElementById('adminUserFilter');
+  sel.innerHTML = '<option value="">— All Drivers (Combined) —</option>' +
+    users.map(u=>`<option value="${u.username}">${u.name} (${u.empid})</option>`).join('');
+}
+
+function renderDashboard(){
+  const filterUser = document.getElementById('adminUserFilter').value;
+  const base = filterUser ? entries.filter(e=>e.username===filterUser) : entries;
+
+  const months = [...new Set([monthStr, ...entries.map(e=>e.month)])].sort().reverse();
+  if(!activeDashMonth || !months.includes(activeDashMonth)) activeDashMonth = months[0];
+
+  document.getElementById('dashMonthFilter').innerHTML = months.map(m=>{
+    const label = new Date(m+'-01').toLocaleDateString('en-IN',{month:'short',year:'numeric'});
+    return `<button class="month-chip ${m===activeDashMonth?'active':''}" onclick="setDashMonth('${m}')">${label}</button>`;
+  }).join('');
+
+  const filtered = base.filter(e=>e.month===activeDashMonth).sort((a,b)=>b.date.localeCompare(a.date));
+  const totalOT = filtered.reduce((s,e)=>s+e.ot_hrs,0);
+  const totalAllow = filtered.reduce((s,e)=>s+e.totalAllowance,0);
+  const drivers = [...new Set(filtered.map(e=>e.username))].length;
+  const monthLabel = new Date(activeDashMonth+'-01').toLocaleDateString('en-IN',{month:'long',year:'numeric'});
+
+  document.getElementById('d-ot').textContent = totalOT.toFixed(1);
+  document.getElementById('d-allow').textContent = '₹'+totalAllow;
+  document.getElementById('d-days').textContent = filtered.length;
+  document.getElementById('d-drivers').textContent = drivers;
+  document.getElementById('dashShareTitle').textContent = monthLabel + (filterUser? ' — '+(users.find(u=>u.username===filterUser)?.name||filterUser) : '');
+
+  const listEl = document.getElementById('dashEntryList');
+  if(!filtered.length){ listEl.innerHTML = `<div class="empty"><div class="empty-icon">📋</div><div class="empty-title">No entries yet</div></div>`; return; }
+  listEl.innerHTML = filtered.map(e=>entryCardHTML(e, true)).join('');
+}
+function setDashMonth(m){ activeDashMonth=m; renderDashboard(); }
+
+function deleteEntry(id){
+  if(!confirm('Delete this entry permanently?')) return;
+  entries = entries.filter(e=>e.id!==id);
+  saveJSON(LS_ENTRIES, entries);
+  renderDashboard();
+}
+
+// ══════════════════════ ADMIN: EDIT ENTRY MODAL ══════════════════════
+function openEditModal(id){
+  const e = entries.find(x=>x.id===id);
+  if(!e) return;
+  document.getElementById('e_id').value = e.id;
+  document.getElementById('e_name').value = e.name+' ('+(e.empid||'')+')';
+  document.getElementById('e_date').value = e.date;
+  document.getElementById('e_dayname').value = e.dayName||'';
+  document.getElementById('e_punchin').value = e.punchIn;
+  document.getElementById('e_punchout').value = e.punchOut;
+  document.getElementById('e_othrs').value = e.ot_hrs;
+  document.getElementById('e_allow').value = e.totalAllowance;
+  document.getElementById('e_reason').value = e.reason||'';
+  document.getElementById('e_remarks').value = e.remarks||'';
+  const inTxt  = e.locationIn  ? `📍 In: ${e.locationIn.address?shortAddr(e.locationIn.address):(e.locationIn.lat+', '+e.locationIn.lng)} — <a href="${mapLink(e.locationIn)}" target="_blank" style="color:var(--blue)">View on map</a>` : '📍 In: not captured';
+  const outTxt = e.locationOut ? `📍 Out: ${e.locationOut.address?shortAddr(e.locationOut.address):(e.locationOut.lat+', '+e.locationOut.lng)} — <a href="${mapLink(e.locationOut)}" target="_blank" style="color:var(--blue)">View on map</a>` : '📍 Out: not captured';
+  document.getElementById('e_locations').innerHTML = inTxt+'<br>'+outTxt;
+  document.getElementById('editModal').classList.remove('hidden');
+}
+function closeEditModal(){ document.getElementById('editModal').classList.add('hidden'); }
+
+function recalcEditPreview(){
+  const date = document.getElementById('e_date').value;
+  const pin = document.getElementById('e_punchin').value;
+  const pout = document.getElementById('e_punchout').value;
+  if(!date||!pin||!pout) return;
+  const calc = calcForEntry(date, pin, pout);
+  document.getElementById('e_othrs').value = calc.otHours;
+  document.getElementById('e_allow').value = calc.total;
+  document.getElementById('e_dayname').value = calc.dayName;
+}
+
+function saveEditedEntry(){
+  const id = Number(document.getElementById('e_id').value);
+  const idx = entries.findIndex(x=>x.id===id);
+  if(idx===-1) return;
+  const date = document.getElementById('e_date').value;
+  const pin = document.getElementById('e_punchin').value;
+  const pout = document.getElementById('e_punchout').value;
+  const calc = calcForEntry(date, pin, pout);
+
+  entries[idx] = {
+    ...entries[idx],
+    date, month: date.slice(0,7),
+    punchIn: pin, punchOut: pout,
+    dayName: calc.dayName,
+    ot_hrs: parseFloat(document.getElementById('e_othrs').value) || calc.otHours,
+    totalAllowance: parseFloat(document.getElementById('e_allow').value) || calc.total,
+    allowances: calc.earnedAllowances,
+    reason: document.getElementById('e_reason').value,
+    remarks: document.getElementById('e_remarks').value,
+    editedByAdmin: true
+  };
+  saveJSON(LS_ENTRIES, entries);
+  closeEditModal();
+  renderDashboard();
+}
+
+function deleteEntryFromModal(){
+  const id = Number(document.getElementById('e_id').value);
+  if(!confirm('Delete this entry permanently?')) return;
+  entries = entries.filter(e=>e.id!==id);
+  saveJSON(LS_ENTRIES, entries);
+  closeEditModal();
+  renderDashboard();
+}
+
+// ══════════════════════ ADMIN: USER MANAGEMENT ══════════════════════
+function renderUserList(){
+  document.getElementById('userCount').textContent = users.length;
+  const listEl = document.getElementById('userList');
+  if(!users.length){ listEl.innerHTML = `<div class="empty"><div class="empty-icon">👥</div><div class="empty-title">No drivers added yet</div></div>`; return; }
+  listEl.innerHTML = users.map(u=>`
+    <div class="user-row">
+      <div>
+        <div class="user-row-name">${u.name}</div>
+        <div class="user-row-meta">${u.empid} · login: <strong>${u.username}</strong></div>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button class="icon-btn edit" style="flex:none;padding:7px 10px" onclick="editUser('${u.username}')">✏️</button>
+        <button class="icon-btn del" style="flex:none;padding:7px 10px" onclick="deleteUser('${u.username}')">🗑️</button>
+      </div>
+    </div>`).join('');
+}
+
+function saveUser(){
+  const editUsername = document.getElementById('u_editid').value;
+  const name = document.getElementById('u_name').value.trim();
+  const empid = document.getElementById('u_empid').value.trim();
+  const username = document.getElementById('u_username').value.trim();
+  const password = document.getElementById('u_password').value.trim();
+
+  if(!name||!empid||!username||!password){ alert('Please fill all fields to create/update a driver login.'); return; }
+
+  const clashing = users.find(u=>u.username===username && u.username!==editUsername);
+  if(clashing){ alert('This username is already taken. Please choose another.'); return; }
+
+  if(editUsername){
+    const idx = users.findIndex(u=>u.username===editUsername);
+    const oldUsername = users[idx].username;
+    users[idx] = {name, empid, username, password};
+    if(oldUsername!==username){
+      entries.forEach(e=>{ if(e.username===oldUsername) e.username=username; });
+      saveJSON(LS_ENTRIES, entries);
+    }
+  } else {
+    users.push({name, empid, username, password});
+  }
+  saveJSON(LS_USERS, users);
+  cancelUserEdit();
+  renderUserList();
+  populateUserFilterDropdown();
+}
+
+function editUser(username){
+  const u = users.find(x=>x.username===username);
+  if(!u) return;
+  document.getElementById('u_editid').value = u.username;
+  document.getElementById('u_name').value = u.name;
+  document.getElementById('u_empid').value = u.empid;
+  document.getElementById('u_username').value = u.username;
+  document.getElementById('u_password').value = u.password;
+  document.getElementById('userFormTitle').textContent = 'Edit Driver Login — '+u.name;
+  document.getElementById('u_cancelBtn').classList.remove('hidden');
+  window.scrollTo(0,0);
+}
+
+function cancelUserEdit(){
+  document.getElementById('u_editid').value = '';
+  document.getElementById('u_name').value = '';
+  document.getElementById('u_empid').value = '';
+  document.getElementById('u_username').value = '';
+  document.getElementById('u_password').value = '';
+  document.getElementById('userFormTitle').textContent = 'Create Driver Login';
+  document.getElementById('u_cancelBtn').classList.add('hidden');
+}
+
+function deleteUser(username){
+  if(!confirm('Delete this driver login? Their past entries will be kept but they will no longer be able to log in.')) return;
+  users = users.filter(u=>u.username!==username);
+  saveJSON(LS_USERS, users);
+  renderUserList();
+  populateUserFilterDropdown();
+}
+
+function changeAdminPassword(){
+  const np = document.getElementById('a_newpass').value.trim();
+  if(!np){ alert('Enter a new password first.'); return; }
+  admin.password = np;
+  saveJSON(LS_ADMIN, admin);
+  document.getElementById('a_newpass').value='';
+  alert('Admin password updated.');
+}
+
+// ══════════════════════ ADMIN: REPORTS (EXCEL + EMAIL) ══════════════════════
+function populateReportMonthDropdown(){
+  const months = [...new Set([monthStr, ...entries.map(e=>e.month)])].sort().reverse();
+  const sel = document.getElementById('reportMonth');
+  sel.innerHTML = months.map(m=>{
+    const label = new Date(m+'-01').toLocaleDateString('en-IN',{month:'long',year:'numeric'});
+    return `<option value="${m}">${label}</option>`;
   }).join('');
 }
 
-function setMonth(m){ activeMonth=m; renderMonthly(); }
+function buildReportWorkbook(monthKey){
+  const filtered = entries.filter(e=>e.month===monthKey).sort((a,b)=>a.date.localeCompare(b.date)||a.name.localeCompare(b.name));
+  const dailyRows = filtered.map(e=>({
+    'Date': e.date, 'Day': e.dayName, 'Driver Name': e.name, 'Employee ID': e.empid||'',
+    'Punch In': e.punchIn, 'Punch Out': e.punchOut, 'OT Hours': e.ot_hrs,
+    'Total Allowance (₹)': e.totalAllowance, 'Reason': e.reason||'', 'Remarks': e.remarks||'',
+    'Entry Type': e.source==='punch'?'Punch In/Out':'Manual',
+    'Location In': e.locationIn ? (e.locationIn.address || `${e.locationIn.lat}, ${e.locationIn.lng}`) : '',
+    'Map Link In': e.locationIn ? mapLink(e.locationIn) : '',
+    'Location Out': e.locationOut ? (e.locationOut.address || `${e.locationOut.lat}, ${e.locationOut.lng}`) : '',
+    'Map Link Out': e.locationOut ? mapLink(e.locationOut) : ''
+  }));
 
-function clearForm(){
-  ['f_name','f_reason'].forEach(id=>document.getElementById(id).selectedIndex=0);
-  ['f_empid','f_ot_hrs','f_remarks','f_punchin','f_punchout'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('f_date').value=todayStr;
-  document.getElementById('f_month').value=monthStr;
-  document.getElementById('allow-result').classList.add('hidden');
+  const uniqueDrivers = [...new Set(filtered.map(e=>e.name))];
+  const summaryRows = uniqueDrivers.map(n=>{
+    const de = filtered.filter(e=>e.name===n);
+    return {
+      'Driver Name': n, 'Employee ID': de[0].empid||'',
+      'Total OT Days': de.length,
+      'Total OT Hours': +de.reduce((s,e)=>s+e.ot_hrs,0).toFixed(2),
+      'Total Allowance (₹)': de.reduce((s,e)=>s+e.totalAllowance,0)
+    };
+  });
+
+  const wb = XLSX.utils.book_new();
+  const ws1 = XLSX.utils.json_to_sheet(dailyRows.length?dailyRows:[{'Date':'No entries this month'}]);
+  const ws2 = XLSX.utils.json_to_sheet(summaryRows.length?summaryRows:[{'Driver Name':'No entries this month'}]);
+  XLSX.utils.book_append_sheet(wb, ws1, 'Daily Log');
+  XLSX.utils.book_append_sheet(wb, ws2, 'Driver Summary');
+  return wb;
+}
+
+function downloadExcelReport(monthKey){
+  if(!monthKey){ alert('Select a month first.'); return; }
+  const wb = buildReportWorkbook(monthKey);
+  XLSX.writeFile(wb, `Driver_OT_Report_${monthKey}.xlsx`);
+}
+
+function emailMonthlyReport(monthKey, silent){
+  if(!monthKey){ if(!silent) alert('Select a month first.'); return; }
+  const filtered = entries.filter(e=>e.month===monthKey);
+  if(!filtered.length && !silent){ alert('No entries for this month.'); return; }
+
+  downloadExcelReport(monthKey);
+
+  const monthLabel = new Date(monthKey+'-01').toLocaleDateString('en-IN',{month:'long',year:'numeric'});
+  const totalOT = filtered.reduce((s,e)=>s+e.ot_hrs,0).toFixed(1);
+  const totalAllow = filtered.reduce((s,e)=>s+e.totalAllowance,0);
+  const uniqueDrivers = [...new Set(filtered.map(e=>e.name))];
+  const driverBreakup = uniqueDrivers.map(n=>{
+    const de = filtered.filter(e=>e.name===n);
+    const hrs = de.reduce((s,e)=>s+e.ot_hrs,0).toFixed(1);
+    const allow = de.reduce((s,e)=>s+e.totalAllowance,0);
+    return `  ${n.padEnd(16)}: OT ${hrs}h  |  Allowance ₹${allow}  |  Days: ${de.length}`;
+  }).join('\n');
+
+  const subject = encodeURIComponent(`Monthly OT & Allowance Report — ${monthLabel}`);
+  const body = encodeURIComponent(
+`Hi Ram Ratan,
+
+Please find the Monthly OT & Allowance Report for ${monthLabel}.
+An Excel file (Driver_OT_Report_${monthKey}.xlsx) has just been downloaded to this device — please attach it to this email before sending.
+
+══════════════════════════════════════
+  MONTHLY REPORT — RODIC CONSULTANTS
+  Month: ${monthLabel}
+══════════════════════════════════════
+
+SUMMARY
+  Total OT Hours   : ${totalOT} hrs
+  Total Allowances : ₹${totalAllow}
+  Total OT Entries : ${filtered.length}
+  Drivers with OT  : ${uniqueDrivers.length}
+
+DRIVER-WISE BREAKUP
+${driverBreakup}
+
+══════════════════════════════════════
+Driver OT Module — Rodic Consultants Pvt. Ltd.`);
+
+  window.location.href = `mailto:${adminEmail}?subject=${subject}&body=${body}`;
+}
+
+// ══════════════════════ AUTO-SEND AT MONTH END ══════════════════════
+function initAutoSendUI(){
+  const enabled = loadJSON(LS_AUTOSEND, false);
+  document.getElementById('autoSendToggle').checked = enabled;
+  updateAutoSendStatusLabel();
+}
+function toggleAutoSend(){
+  const enabled = document.getElementById('autoSendToggle').checked;
+  saveJSON(LS_AUTOSEND, enabled);
+  updateAutoSendStatusLabel();
+}
+function updateAutoSendStatusLabel(){
+  const enabled = loadJSON(LS_AUTOSEND, false);
+  const sentLog = loadJSON(LS_SENTLOG, []);
+  const lastSent = sentLog.length ? sentLog[sentLog.length-1] : null;
+  document.getElementById('autoSendStatus').textContent = enabled
+    ? (lastSent ? `Enabled. Last auto-sent: ${lastSent}.` : 'Enabled. Not triggered yet — will fire on the last day of the month.')
+    : 'Disabled.';
+}
+function isLastDayOfMonth(d){
+  const t = new Date(d); t.setDate(t.getDate()+1);
+  return t.getMonth() !== d.getMonth();
+}
+function checkAutoSendTrigger(){
+  const enabled = loadJSON(LS_AUTOSEND, false);
+  if(!enabled) return;
+  const now = new Date();
+  if(!isLastDayOfMonth(now)) return;
+  const sentLog = loadJSON(LS_SENTLOG, []);
+  if(sentLog.includes(monthStr)) return;
+  emailMonthlyReport(monthStr, true);
+  sentLog.push(monthStr);
+  saveJSON(LS_SENTLOG, sentLog);
+  updateAutoSendStatusLabel();
 }
 </script>
 </body>
