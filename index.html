@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Driver OT & Allowance Module — Rodic</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 :root{
@@ -560,12 +561,13 @@ input:checked+.slider:before{transform:translateX(18px)}
 </div>
 
 <script>
-// ══════════════════════ CONFIG / STORAGE ══════════════════════
+// ══════════════════════ CONFIG ══════════════════════
 const adminEmail = 'ram.ratan@rodicconsultants.com';
 const DUTY_START_MIN = 8*60;   // 8:00 AM
 const DUTY_END_MIN   = 20*60;  // 8:00 PM
 const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 
+// localStorage keys — session + auto-send stay on THIS device; all shared data lives in Supabase (see DB below)
 const LS_USERS='ot_users_v1', LS_ADMIN='ot_admin_v1', LS_ENTRIES='ot_entries_v1',
       LS_ACTIVE='ot_active_punch_v1_', LS_SESSION='ot_session_v1', LS_AUTOSEND='ot_autosend_v1',
       LS_SENTLOG='ot_sent_months_v1';
@@ -573,12 +575,110 @@ const LS_USERS='ot_users_v1', LS_ADMIN='ot_admin_v1', LS_ENTRIES='ot_entries_v1'
 function loadJSON(key,def){ try{ const v=localStorage.getItem(key); return v===null?def:JSON.parse(v);}catch(e){return def;} }
 function saveJSON(key,val){ localStorage.setItem(key, JSON.stringify(val)); }
 
-let users   = loadJSON(LS_USERS, []);
-let admin   = loadJSON(LS_ADMIN, {username:'admin', password:'admin@123'});
-let entries = loadJSON(LS_ENTRIES, []);
-saveJSON(LS_ADMIN, admin);
+// ══════════════════════ SUPABASE CLOUD DATABASE ══════════════════════
+// ONE-TIME SETUP (~5 min) — full instructions in SUPABASE_SETUP.md next to this file:
+//   1. Create a free project at https://supabase.com
+//   2. Open the project's SQL editor and run the whole SQL block from SUPABASE_SETUP.md
+//   3. Project Settings → API → copy "Project URL" and the "anon public" key into the two lines below
+// Until real keys are pasted, the app runs in local-only mode (data stays on this device).
+const SUPABASE_URL      = 'https://dlvjnjkefpjikiqrkjef.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRsdmpuamtlZnBqaWtpcXJramVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MDA1NzgsImV4cCI6MjEwMDM3NjU3OH0.4CQ1Kj9dawVYO_KRDklPQlHJTWNh6qKylG-n-VbwgDs';
 
-let session = loadJSON(LS_SESSION, null); // {role, username, name, empid}
+const CLOUD = !SUPABASE_URL.includes('YOUR-') && !SUPABASE_ANON_KEY.includes('YOUR-')
+           && /^https:\/\/.+\.supabase\.co/.test(SUPABASE_URL) && SUPABASE_ANON_KEY.length > 20;
+let sb = null;
+try{ if(CLOUD && window.supabase) sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); }
+catch(err){ console.error('Supabase init failed:', err); }
+
+const DEFAULT_ADMIN = {username:'admin', password:'admin@123'};
+const entryRow = e => ({ id:e.id, username:e.username, month:e.month, data:e });
+
+// Data-access layer. Each method writes to Supabase when configured, else falls back to localStorage.
+const DB = {
+  async loadAll(){
+    if(!sb){
+      users   = loadJSON(LS_USERS, []);
+      admin   = loadJSON(LS_ADMIN, {...DEFAULT_ADMIN});
+      entries = loadJSON(LS_ENTRIES, []);
+      saveJSON(LS_ADMIN, admin);
+      return;
+    }
+    const [u,a,e] = await Promise.all([
+      sb.from('ot_users').select('data'),
+      sb.from('ot_admin').select('data').eq('id',1).maybeSingle(),
+      sb.from('ot_entries').select('data')
+    ]);
+    if(u.error) throw u.error;
+    if(e.error) throw e.error;
+    if(a.error) throw a.error;
+    users   = (u.data || []).map(r=>r.data);
+    entries = (e.data || []).map(r=>r.data);
+    // only seed the default admin when the row is genuinely absent — never on a read error
+    if(a.data && a.data.data){ admin = a.data.data; }
+    else { admin = {...DEFAULT_ADMIN}; await sb.from('ot_admin').upsert({id:1, data:admin}); }
+  },
+  async reloadShared(){
+    if(!sb){ users=loadJSON(LS_USERS,[]); entries=loadJSON(LS_ENTRIES,[]); return; }
+    const [u,e] = await Promise.all([ sb.from('ot_users').select('data'), sb.from('ot_entries').select('data') ]);
+    if(!u.error && u.data) users   = u.data.map(r=>r.data);
+    if(!e.error && e.data) entries = e.data.map(r=>r.data);
+  },
+  async loadActivePunch(username){
+    if(!sb) return loadJSON(LS_ACTIVE+username, null);
+    const {data,error} = await sb.from('ot_active_punch').select('data').eq('username',username).maybeSingle();
+    if(error){ console.error(error); return null; }
+    return data ? data.data : null;
+  },
+  async setActivePunch(username, obj){
+    if(!sb){ saveJSON(LS_ACTIVE+username, obj); return; }
+    const {error} = await sb.from('ot_active_punch').upsert({username, data:obj});
+    if(error){ console.error(error); toast('Could not save punch-in to the cloud.', 'err'); }
+  },
+  async clearActivePunch(username){
+    if(!sb){ localStorage.removeItem(LS_ACTIVE+username); return; }
+    const {error} = await sb.from('ot_active_punch').delete().eq('username',username);
+    if(error) console.error(error);
+  },
+  async upsertUser(u){
+    if(!sb){ saveJSON(LS_USERS, users); return; }
+    const {error} = await sb.from('ot_users').upsert({username:u.username, data:u});
+    if(error){ console.error(error); toast('Could not save the driver to the cloud.', 'err'); }
+  },
+  async deleteUser(username){
+    if(!sb){ saveJSON(LS_USERS, users); return; }
+    const {error} = await sb.from('ot_users').delete().eq('username',username);
+    if(error){ console.error(error); toast('Could not delete the driver in the cloud.', 'err'); }
+  },
+  async saveAdmin(a){
+    if(!sb){ saveJSON(LS_ADMIN, a); return; }
+    const {error} = await sb.from('ot_admin').upsert({id:1, data:a});
+    if(error){ console.error(error); toast('Could not update the admin password in the cloud.', 'err'); }
+  },
+  async saveEntry(e){
+    if(!sb){ saveJSON(LS_ENTRIES, entries); return; }
+    const {error} = await sb.from('ot_entries').upsert(entryRow(e));
+    if(error){ console.error(error); toast('Could not save the entry to the cloud — check your connection.', 'err'); }
+  },
+  async deleteEntry(id){
+    if(!sb){ saveJSON(LS_ENTRIES, entries); return; }
+    const {error} = await sb.from('ot_entries').delete().eq('id',id);
+    if(error){ console.error(error); toast('Could not delete the entry in the cloud.', 'err'); }
+  },
+  async renameEntriesUser(newUsername){
+    if(!sb){ saveJSON(LS_ENTRIES, entries); return; }
+    const rows = entries.filter(e=>e.username===newUsername).map(entryRow);
+    if(rows.length){ const {error} = await sb.from('ot_entries').upsert(rows); if(error) console.error(error); }
+  }
+};
+
+// ══════════════════════ APP STATE (in-memory cache of the shared data) ══════════════════════
+let users   = [];
+let admin   = {...DEFAULT_ADMIN};
+let entries = [];
+let activePunch = null;      // current user's open punch-in (or null)
+let dataReady = false;       // becomes true once the first cloud load finishes
+
+let session = loadJSON(LS_SESSION, null); // {role, username, name, empid} — per-device, stays local
 let loginRole = 'user';
 let activeDashMonth = '', activeMyMonth = '';
 
@@ -587,6 +687,60 @@ const todayStr = today.toISOString().split('T')[0];
 const monthStr = todayStr.slice(0,7);
 
 document.getElementById('adminEmailLabel').textContent = adminEmail;
+
+// ══════════════════════ TOAST + LIVE CROSS-DEVICE REFRESH ══════════════════════
+function toast(msg, kind){
+  let t = document.getElementById('cloudToast');
+  if(!t){
+    t = document.createElement('div'); t.id='cloudToast';
+    t.style.cssText='position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:9999;max-width:90%;padding:10px 16px;border-radius:10px;font:600 12px/1.4 Inter,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.25);text-align:center';
+    document.body.appendChild(t);
+  }
+  const err = kind==='err';
+  t.style.background = err ? '#FEF3F2' : '#ECFDF3';
+  t.style.color      = err ? '#912018' : '#027A48';
+  t.style.border     = '1px solid '+(err ? '#FDA29B' : '#6CE9A6');
+  t.textContent = msg; t.style.display='block';
+  clearTimeout(t._to); t._to = setTimeout(()=>{ t.style.display='none'; }, 3800);
+}
+
+let pollTimer = null;
+async function refreshData(){
+  if(!session) return;
+  try{
+    await DB.reloadShared();
+    if(session.role==='user') activePunch = await DB.loadActivePunch(session.username);
+    rerenderActive();
+  }catch(e){ console.error(e); }
+}
+function rerenderActive(){
+  if(!session) return;
+  if(session.role==='user'){ renderMyEntries(); renderPunchUI(); }
+  else { populateUserFilterDropdown(); populateReportMonthDropdown(); renderUserList(); renderDashboard(); }
+}
+function startPolling(){ if(!sb) return; if(pollTimer) clearInterval(pollTimer); pollTimer = setInterval(refreshData, 15000); }
+function stopPolling(){ if(pollTimer){ clearInterval(pollTimer); pollTimer=null; } }
+document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) refreshData(); });
+window.addEventListener('focus', ()=>{ refreshData(); });
+
+// One-time offer to lift any existing on-device data into the cloud the first time real keys are used.
+async function maybeMigrateLocal(){
+  if(!sb) return;
+  if(localStorage.getItem('ot_migrated_v1')) return;
+  const localUsers   = loadJSON(LS_USERS, []);
+  const localEntries = loadJSON(LS_ENTRIES, []);
+  const localAdmin   = loadJSON(LS_ADMIN, null);
+  if((localUsers.length || localEntries.length) && users.length===0 && entries.length===0){
+    if(confirm(`Found ${localUsers.length} driver login(s) and ${localEntries.length} entr(ies) saved on this device. Upload them to the shared cloud database now?`)){
+      for(const u of localUsers){ await DB.upsertUser(u); }
+      if(localEntries.length){ const {error} = await sb.from('ot_entries').upsert(localEntries.map(entryRow)); if(error) console.error(error); }
+      if(localAdmin && localAdmin.password) await DB.saveAdmin(localAdmin);
+      await DB.loadAll();
+      toast('Local data uploaded to the cloud.');
+    }
+  }
+  localStorage.setItem('ot_migrated_v1','1');
+}
 
 // ══════════════════════ LOGIN ══════════════════════
 function setLoginRole(r){
@@ -599,11 +753,14 @@ function setLoginRole(r){
   document.getElementById('loginErr').classList.add('hidden');
 }
 
-function doLogin(){
+async function doLogin(){
   const u = document.getElementById('loginUsername').value.trim();
   const p = document.getElementById('loginPassword').value;
   const errEl = document.getElementById('loginErr');
   if(!u || !p){ errEl.textContent='Please enter username and password.'; errEl.classList.remove('hidden'); return; }
+
+  // make sure the latest users/admin are loaded from the cloud before we validate the login
+  if(!dataReady){ try{ await bootLoad(); }catch(e){ console.error(e); toast('Could not reach the database — check your connection.', 'err'); } }
 
   if(loginRole==='admin'){
     if(u===admin.username && p===admin.password){
@@ -615,11 +772,13 @@ function doLogin(){
     else { errEl.textContent='Incorrect username or password. Ask Admin to check your login.'; errEl.classList.remove('hidden'); return; }
   }
   saveJSON(LS_SESSION, session);
-  enterApp();
+  await enterApp();
 }
 
 function doLogout(){
   session = null;
+  activePunch = null;
+  stopPolling();
   localStorage.removeItem(LS_SESSION);
   document.getElementById('appScreen').classList.add('hidden');
   document.getElementById('loginScreen').classList.remove('hidden');
@@ -627,13 +786,14 @@ function doLogout(){
   document.getElementById('loginPassword').value='';
 }
 
-function enterApp(){
+async function enterApp(){
   document.getElementById('loginScreen').classList.add('hidden');
   document.getElementById('appScreen').classList.remove('hidden');
   document.getElementById('todayBadge').textContent = today.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
   document.getElementById('sessionNameLabel').textContent = session.role==='admin' ? 'Admin — '+session.name : session.name+' (Driver)';
   buildTabs();
   if(session.role==='user'){
+    activePunch = await DB.loadActivePunch(session.username);
     document.getElementById('f_date').value = todayStr;
     renderPunchUI();
     renderMyEntries();
@@ -647,10 +807,19 @@ function enterApp(){
     checkAutoSendTrigger();
     switchTabById('dashboard');
   }
+  startPolling();   // (re)start live cross-device refresh for this session
 }
 
-// resume session on load
-if(session){ enterApp(); }
+// ══════════════════════ BOOT ══════════════════════
+async function bootLoad(){ await DB.loadAll(); dataReady = true; }
+(async function boot(){
+  try{ await bootLoad(); }
+  catch(err){ console.error(err); toast('Could not reach the database. Check the Supabase keys / your connection.', 'err'); }
+  if(CLOUD && !sb) toast('Cloud library did not load — running in local-only mode.', 'err');
+  if(dataReady) await maybeMigrateLocal();   // skip migration if the initial cloud load failed
+  if(session){ try{ await enterApp(); }catch(err){ console.error(err); } }
+  startPolling();
+})();
 
 // ══════════════════════ TABS ══════════════════════
 function buildTabs(){
@@ -774,11 +943,8 @@ function locChipHTML(loc, label){
 }
 
 // ══════════════════════ PUNCH IN / OUT ══════════════════════
-function activePunchKey(){ return LS_ACTIVE + session.username; }
-function getActivePunch(){ return loadJSON(activePunchKey(), null); }
-
 function renderPunchUI(){
-  const active = getActivePunch();
+  const active = activePunch;
   const pill = document.getElementById('punchStatusPill');
   if(active){
     pill.textContent = 'Punched In at '+active.punchIn;
@@ -823,13 +989,14 @@ async function punchIn(){
   const loc = await getLocation();
   const now = new Date();
   const timeStr = now.toTimeString().slice(0,5);
-  saveJSON(activePunchKey(), {date: todayStr, punchIn: timeStr, locationIn: loc});
+  activePunch = {date: todayStr, punchIn: timeStr, locationIn: loc};
+  await DB.setActivePunch(session.username, activePunch);
   renderPunchUI();
   showSuccess('⏱️','Punched In!', 'Recorded at '+timeStr+(loc?' · 📍 '+(loc.address?shortAddr(loc.address):'location captured'):' · location unavailable (permission denied or GPS off)')+'. Don\'t forget to Punch Out at the end of your duty.');
 }
 
 async function punchOut(){
-  const active = getActivePunch();
+  const active = activePunch;
   if(!active){ alert('Please Punch In first.'); return; }
   const pinBtn = document.getElementById('btnPunchIn');
   const poutBtn = document.getElementById('btnPunchOut');
@@ -851,8 +1018,9 @@ async function punchOut(){
     source: 'punch', locationIn: active.locationIn || null, locationOut: loc
   };
   entries.push(entry);
-  saveJSON(LS_ENTRIES, entries);
-  localStorage.removeItem(activePunchKey());
+  await DB.saveEntry(entry);
+  activePunch = null;
+  await DB.clearActivePunch(session.username);
   renderPunchUI();
   showSuccess('✅','Punched Out!', `OT: ${calc.otHours} hrs · Allowance: ₹${calc.total}.`+(loc?' · 📍 location captured':' · location unavailable')+' Entry saved automatically.');
 }
@@ -873,7 +1041,7 @@ function calcManualPreview(){
   return calc;
 }
 
-function submitManualEntry(){
+async function submitManualEntry(){
   const date    = document.getElementById('f_date').value;
   const punchIn = document.getElementById('f_punchin').value;
   const punchOut= document.getElementById('f_punchout').value;
@@ -891,7 +1059,7 @@ function submitManualEntry(){
     source: 'manual'
   };
   entries.push(entry);
-  saveJSON(LS_ENTRIES, entries);
+  await DB.saveEntry(entry);
   clearManualForm();
   renderPunchUI();
   showSuccess('✅','Manual Entry Saved!', `OT: ${calc.otHours} hrs · Allowance: ₹${calc.total}.`);
@@ -970,8 +1138,10 @@ function entryCardHTML(e, showEdit){
 // ══════════════════════ ADMIN: DASHBOARD ══════════════════════
 function populateUserFilterDropdown(){
   const sel = document.getElementById('adminUserFilter');
+  const cur = sel.value;
   sel.innerHTML = '<option value="">— All Drivers (Combined) —</option>' +
     users.map(u=>`<option value="${u.username}">${u.name} (${u.empid})</option>`).join('');
+  sel.value = cur;
 }
 
 function renderDashboard(){
@@ -1004,10 +1174,10 @@ function renderDashboard(){
 }
 function setDashMonth(m){ activeDashMonth=m; renderDashboard(); }
 
-function deleteEntry(id){
+async function deleteEntry(id){
   if(!confirm('Delete this entry permanently?')) return;
   entries = entries.filter(e=>e.id!==id);
-  saveJSON(LS_ENTRIES, entries);
+  await DB.deleteEntry(id);
   renderDashboard();
 }
 
@@ -1043,7 +1213,7 @@ function recalcEditPreview(){
   document.getElementById('e_dayname').value = calc.dayName;
 }
 
-function saveEditedEntry(){
+async function saveEditedEntry(){
   const id = Number(document.getElementById('e_id').value);
   const idx = entries.findIndex(x=>x.id===id);
   if(idx===-1) return;
@@ -1064,16 +1234,16 @@ function saveEditedEntry(){
     remarks: document.getElementById('e_remarks').value,
     editedByAdmin: true
   };
-  saveJSON(LS_ENTRIES, entries);
+  await DB.saveEntry(entries[idx]);
   closeEditModal();
   renderDashboard();
 }
 
-function deleteEntryFromModal(){
+async function deleteEntryFromModal(){
   const id = Number(document.getElementById('e_id').value);
   if(!confirm('Delete this entry permanently?')) return;
   entries = entries.filter(e=>e.id!==id);
-  saveJSON(LS_ENTRIES, entries);
+  await DB.deleteEntry(id);
   closeEditModal();
   renderDashboard();
 }
@@ -1096,7 +1266,7 @@ function renderUserList(){
     </div>`).join('');
 }
 
-function saveUser(){
+async function saveUser(){
   const editUsername = document.getElementById('u_editid').value;
   const name = document.getElementById('u_name').value.trim();
   const empid = document.getElementById('u_empid').value.trim();
@@ -1114,12 +1284,15 @@ function saveUser(){
     users[idx] = {name, empid, username, password};
     if(oldUsername!==username){
       entries.forEach(e=>{ if(e.username===oldUsername) e.username=username; });
-      saveJSON(LS_ENTRIES, entries);
+      await DB.deleteUser(oldUsername);
+      await DB.renameEntriesUser(username);
     }
+    await DB.upsertUser(users[idx]);
   } else {
-    users.push({name, empid, username, password});
+    const nu = {name, empid, username, password};
+    users.push(nu);
+    await DB.upsertUser(nu);
   }
-  saveJSON(LS_USERS, users);
   cancelUserEdit();
   renderUserList();
   populateUserFilterDropdown();
@@ -1148,19 +1321,19 @@ function cancelUserEdit(){
   document.getElementById('u_cancelBtn').classList.add('hidden');
 }
 
-function deleteUser(username){
+async function deleteUser(username){
   if(!confirm('Delete this driver login? Their past entries will be kept but they will no longer be able to log in.')) return;
   users = users.filter(u=>u.username!==username);
-  saveJSON(LS_USERS, users);
+  await DB.deleteUser(username);
   renderUserList();
   populateUserFilterDropdown();
 }
 
-function changeAdminPassword(){
+async function changeAdminPassword(){
   const np = document.getElementById('a_newpass').value.trim();
   if(!np){ alert('Enter a new password first.'); return; }
   admin.password = np;
-  saveJSON(LS_ADMIN, admin);
+  await DB.saveAdmin(admin);
   document.getElementById('a_newpass').value='';
   alert('Admin password updated.');
 }
@@ -1169,10 +1342,12 @@ function changeAdminPassword(){
 function populateReportMonthDropdown(){
   const months = [...new Set([monthStr, ...entries.map(e=>e.month)])].sort().reverse();
   const sel = document.getElementById('reportMonth');
+  const cur = sel.value;
   sel.innerHTML = months.map(m=>{
     const label = new Date(m+'-01').toLocaleDateString('en-IN',{month:'long',year:'numeric'});
     return `<option value="${m}">${label}</option>`;
   }).join('');
+  if(cur && months.includes(cur)) sel.value = cur;
 }
 
 function buildReportWorkbook(monthKey){
